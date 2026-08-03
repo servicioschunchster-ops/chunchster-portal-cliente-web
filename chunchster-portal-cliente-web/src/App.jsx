@@ -14,6 +14,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         
         {/* Rutas Privadas (Envueltas en el DashboardLayout) */}
+         {/* Rutas Privadas (Envueltas en el DashboardLayout) */}
         <Route element={<DashboardLayout />}>
           <Route path="/lobby" element={<Lobby />} />
           <Route path="/inventario" element={<Inventario />} />
