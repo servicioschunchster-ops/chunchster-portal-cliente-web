@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Home, Package, Calendar, LogOut } from 'lucide-react';
-import logoChunchster from '../../assets/Logo.jpeg';
+import logoChunchster from '../../assets/logo.jpeg';
 
 export default function DashboardLayout() {
   const location = useLocation();

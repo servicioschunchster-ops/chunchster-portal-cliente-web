@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 // Importamos el logo que guardaste en la carpeta assets
-import logoChunchster from '../../assets/Logo.jpeg'; 
+import logoChunchster from '../../assets/logo.jpeg'; 
 
 export default function Login() {
   const [email, setEmail] = useState('');

@@ -12,7 +12,7 @@ function App() {
       <Routes>
         {/* Rutas Públicas (Sin menú lateral) */}
         <Route path="/login" element={<Login />} />
-        
+        {/* Rutas Privadas (Envueltas en el DashboardLayout) */}
         {/* Rutas Privadas (Envueltas en el DashboardLayout) */}
          {/* Rutas Privadas (Envueltas en el DashboardLayout) */}
         <Route element={<DashboardLayout />}>
