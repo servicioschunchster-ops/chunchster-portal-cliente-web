@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { invService } from '../../services/invService';
+// 1. CAMBIO: Importamos catalogService desde la nueva estructura
+import { catalogService } from '../../services/invService';
 import { Plus, Search, Loader2 } from 'lucide-react';
 
 // Importamos los componentes modulares
@@ -23,7 +24,8 @@ export default function Inventario() {
   const cargarCatalogo = async () => {
     try {
       setCargando(true);
-      const response = await invService.getCatalog();
+      // 2. CAMBIO: Usamos el método de la clase catalogService
+      const response = await catalogService.getCatalog();
       setProductos(response.data.products); 
     } catch (err) {
       setError('Hubo un error al cargar el inventario.');
@@ -46,7 +48,8 @@ export default function Inventario() {
   const eliminarProducto = async (productoId) => {
     if(window.confirm("¿Estás seguro de que deseas eliminar este producto? Una vez borrado, no podrás verlo de nuevo.")) {
       try {
-        await invService.deleteProduct(productoId);
+        // 3. CAMBIO: Usamos catalogService para eliminar
+        await catalogService.deleteProduct(productoId);
         cargarCatalogo();
       } catch (error) {
         alert("Error al eliminar el producto");

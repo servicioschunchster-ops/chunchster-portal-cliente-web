@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Loader2, MapPin } from 'lucide-react';
-import { invService } from '../../../services/invService';
+import { catalogService } from '../../../services/invService';
 import { agendaService } from '../../../services/agendaService';
 
 export default function OrderModal({ isOpen, onClose, onOrderCreated }) {
@@ -38,7 +38,7 @@ export default function OrderModal({ isOpen, onClose, onOrderCreated }) {
   const cargarInventarioParaSelector = async () => {
     try {
       setCargandoProductos(true);
-      const res = await invService.getCatalog();
+      const res = await catalogService.getCatalog();
       const listaProds = res.data?.products || [];
       setProductos(listaProds);
       

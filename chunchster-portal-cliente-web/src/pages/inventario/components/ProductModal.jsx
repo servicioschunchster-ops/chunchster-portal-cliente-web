@@ -1,6 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Wand2, Loader2, Image as ImageIcon, Trash2, UploadCloud } from 'lucide-react';
-import { invService } from '../../../services/invService';
+import { catalogService } from '../../../services/invService';
+
+const ORIENTACIONES = [
+  { id: 'FRONT', label: 'Frente' },
+  { id: 'BACK', label: 'Atrás' },
+  { id: 'LEFT', label: 'Izquierda' },
+  { id: 'RIGHT', label: 'Derecha' }
+];
 
 export default function ProductModal({ isOpen, onClose, productoEditando, onSaveSuccess }) {
   const [guardando, setGuardando] = useState(false);
@@ -10,15 +17,22 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
     base_price: '', rental_price_day: '', rental_deposit: ''
   });
 
-  const [imagenesAntiguas, setImagenesAntiguas] = useState([]); 
-  const [nuevosArchivos, setNuevosArchivos] = useState([]); 
-  const [previews, setPreviews] = useState([]); 
+  const [galeria, setGaleria] = useState({
+    FRONT: { url: null, file: null, isNew: false },
+    BACK: { url: null, file: null, isNew: false },
+    LEFT: { url: null, file: null, isNew: false },
+    RIGHT: { url: null, file: null, isNew: false }
+  });
+
+  const fileInputRefs = {
+    FRONT: useRef(null),
+    BACK: useRef(null),
+    LEFT: useRef(null),
+    RIGHT: useRef(null)
+  };
 
   useEffect(() => {
     if (isOpen) {
-      setNuevosArchivos([]);
-      setPreviews([]);
-      
       if (productoEditando) {
         setFormValues({
           name: productoEditando.name || '',
@@ -31,14 +45,29 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
         });
 
         const urls = productoEditando.images || [];
-        setImagenesAntiguas(urls);
-        setPreviews(urls.map(url => ({ url, isNew: false })));
+        
+        // CORRECCIÓN: Buscamos la URL basándonos en la carpeta de orientación de AWS
+        const getUrlPorOrientacion = (orientacion) => {
+          return urls.find(url => url.includes(`/${orientacion}/`)) || null;
+        };
+
+        setGaleria({
+          FRONT: { url: getUrlPorOrientacion('FRONT'), file: null, isNew: false },
+          BACK:  { url: getUrlPorOrientacion('BACK'), file: null, isNew: false },
+          LEFT:  { url: getUrlPorOrientacion('LEFT'), file: null, isNew: false },
+          RIGHT: { url: getUrlPorOrientacion('RIGHT'), file: null, isNew: false }
+        });
       } else {
         setFormValues({
           name: '', sku: '', category_id: 'GENERAL', product_type: 'rental',
           base_price: '', rental_price_day: '', rental_deposit: ''
         });
-        setImagenesAntiguas([]);
+        setGaleria({
+          FRONT: { url: null, file: null, isNew: false },
+          BACK: { url: null, file: null, isNew: false },
+          LEFT: { url: null, file: null, isNew: false },
+          RIGHT: { url: null, file: null, isNew: false }
+        });
       }
     }
   }, [isOpen, productoEditando]);
@@ -50,31 +79,25 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
     setFormValues(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length > 0) {
-      setNuevosArchivos(prev => [...prev, ...files]);
-      
-      const nuevosPreviews = files.map(file => ({
-        url: URL.createObjectURL(file),
-        isNew: true,
-        file: file
+  const handleImageSelect = (orientacion, e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setGaleria(prev => ({
+        ...prev,
+        [orientacion]: {
+          url: URL.createObjectURL(file),
+          file: file,
+          isNew: true
+        }
       }));
-      
-      setPreviews(prev => [...prev, ...nuevosPreviews]);
     }
   };
 
-  const handleRemoveImage = (indexToRemove) => {
-    const item = previews[indexToRemove];
-    
-    if (item.isNew) {
-      setNuevosArchivos(prev => prev.filter(f => f !== item.file));
-    } else {
-      setImagenesAntiguas(prev => prev.filter(url => url !== item.url));
-    }
-    
-    setPreviews(prev => prev.filter((_, i) => i !== indexToRemove));
+  const handleRemoveImage = (orientacion) => {
+    setGaleria(prev => ({
+      ...prev,
+      [orientacion]: { url: null, file: null, isNew: false }
+    }));
   };
 
   const comprimirYConvertirBase64 = (file) => {
@@ -108,9 +131,7 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-          const base64String = dataUrl.split(',')[1];
-          resolve(base64String);
+          resolve(canvas.toDataURL('image/jpeg', 0.8).split(',')[1]);
         };
         img.onerror = reject;
       };
@@ -120,7 +141,7 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
 
   const generarSKU = () => {
     if (!formValues.name) {
-      alert("Escribe primero el nombre del producto para generar el SKU.");
+      alert("Escribe primero el nombre del producto.");
       return;
     }
     const prefijo = formValues.category_id.substring(0, 3).toUpperCase();
@@ -133,13 +154,17 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
     e.preventDefault();
     setGuardando(true);
 
+    const urlsMantenidas = Object.values(galeria)
+      .filter(slot => slot.url && !slot.isNew)
+      .map(slot => slot.url);
+
     const productoData = {
       name: formValues.name.trim(),
       sku: formValues.sku.trim().toUpperCase(),
       category_id: formValues.category_id,
       product_type: formValues.product_type,
       base_price: parseFloat(formValues.base_price),
-      images: imagenesAntiguas 
+      images: urlsMantenidas 
     };
 
     if (['rental', 'both'].includes(formValues.product_type)) {
@@ -151,38 +176,37 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
       let productId = productoEditando?.product_id;
 
       if (productoEditando) {
-        await invService.updateProduct(productId, productoData);
+        await catalogService.updateProduct(productId, productoData);
       } else {
-        const response = await invService.createProduct(productoData);
+        const response = await catalogService.createProduct(productoData);
         productId = response.data.product_id;
       }
 
-      if (nuevosArchivos.length > 0 && productId) {
-        try {
-          const orientacionesPermitidas = ['FRONT', 'BACK', 'LEFT', 'RIGHT'];
-
-          await Promise.all(nuevosArchivos.map(async (file, index) => {
-            const base64Image = await comprimirYConvertirBase64(file);
-            
-            const orientacion = orientacionesPermitidas[index % orientacionesPermitidas.length];
-
-            await invService.uploadProductImage(productId, {
-              content_type: file.type,
-              image: base64Image,
-              orientation: orientacion,
-              replace: false 
-            });
-          }));
-        } catch (imageError) {
-          console.warn("Aviso: El producto se guardó, pero algunas imágenes fallaron:", imageError);
-          alert("Producto guardado, pero algunas fotos fueron bloqueadas por el servidor.");
+      const subidas = ORIENTACIONES.map(async ({ id: orientacion }) => {
+        const slot = galeria[orientacion];
+        if (slot.isNew && slot.file) {
+          const base64Image = await comprimirYConvertirBase64(slot.file);
+          
+          return catalogService.uploadProductImage(productId, {
+            content_type: slot.file.type,
+            image: base64Image,
+            orientation: orientacion,
+            replace: true
+          });
         }
+      });
+
+      try {
+        await Promise.all(subidas.filter(Boolean));
+      } catch (imageError) {
+        console.warn("Error al subir algunas imágenes:", imageError);
+        alert("El producto se guardó, pero algunas fotos fueron rechazadas.");
       }
 
       onSaveSuccess(); 
       onClose(); 
     } catch (error) {
-      alert(error.message || "Error al guardar el producto. Verifica que el SKU no esté repetido.");
+      alert(error.message || "Error al guardar el producto.");
     } finally {
       setGuardando(false);
     }
@@ -205,53 +229,53 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
         <form onSubmit={guardarProducto} className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
           
           <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
-            <div className="flex justify-between items-center mb-4">
-              <label className="block text-sm font-bold text-gray-700">Galería Fotográfica</label>
-              
-              <div className="relative">
-                <input 
-                  type="file" 
-                  multiple 
-                  accept="image/jpeg, image/png, image/webp, image/gif"
-                  onChange={handleImageChange}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-                  title="Subir imágenes"
-                />
-                <button type="button" className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm">
-                  <UploadCloud className="w-4 h-4" /> Agregar Fotos
-                </button>
-              </div>
-            </div>
-
-            {previews.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-gray-300 rounded-lg bg-white text-gray-400">
-                <ImageIcon className="w-10 h-10 mb-2 opacity-50" />
-                <p className="text-sm">No hay imágenes. Sube fotos de tu producto.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
-                {previews.map((item, index) => (
-                  <div key={index} className="relative aspect-square bg-white rounded-lg border border-gray-200 overflow-hidden group shadow-sm">
-                    <img src={item.url} alt={`Preview ${index}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+            <h4 className="block text-sm font-bold text-gray-700 mb-4">Fotos del Producto por Ángulo</h4>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {ORIENTACIONES.map(({ id, label }) => {
+                const slot = galeria[id];
+                
+                return (
+                  <div key={id} className="flex flex-col items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</span>
                     
-                    <button 
-                      type="button" 
-                      onClick={() => handleRemoveImage(index)}
-                      className="absolute top-1.5 right-1.5 p-1.5 bg-white/90 text-red-500 hover:text-red-700 hover:bg-white rounded-md shadow-sm transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
-                      title="Eliminar foto"
+                    <div 
+                      className={`relative w-full aspect-square rounded-xl border-2 overflow-hidden flex flex-col items-center justify-center group transition-colors ${slot.url ? 'border-gray-200 bg-white' : 'border-dashed border-gray-300 bg-gray-50 hover:bg-white hover:border-yellow-400 cursor-pointer'}`}
+                      onClick={() => !slot.url && fileInputRefs[id].current.click()}
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      <input 
+                        type="file" 
+                        ref={fileInputRefs[id]}
+                        accept="image/jpeg, image/png, image/webp"
+                        onChange={(e) => handleImageSelect(id, e)}
+                        className="hidden" 
+                      />
 
-                    {item.isNew && (
-                      <span className="absolute bottom-1.5 left-1.5 text-[10px] font-bold bg-green-500 text-white px-1.5 py-0.5 rounded uppercase shadow-sm">
-                        Nueva
-                      </span>
-                    )}
+                      {slot.url ? (
+                        <>
+                          <img src={slot.url} alt={label} className="w-full h-full object-cover" />
+                          <button 
+                            type="button" 
+                            onClick={(e) => { e.stopPropagation(); handleRemoveImage(id); }}
+                            className="absolute top-1.5 right-1.5 p-1.5 bg-white/90 text-red-500 hover:text-red-700 hover:bg-white rounded-md shadow-sm transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          {slot.isNew && (
+                            <span className="absolute bottom-1.5 left-1.5 text-[10px] font-bold bg-green-500 text-white px-1.5 py-0.5 rounded uppercase shadow-sm">Nueva</span>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <UploadCloud className="w-6 h-6 text-gray-400 group-hover:text-yellow-500 transition-colors mb-1" />
+                          <span className="text-xs text-gray-400 group-hover:text-yellow-600 font-medium">Subir</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -273,8 +297,8 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">SKU (Código único)</label>
               <div className="flex gap-2">
-                <input type="text" name="sku" value={formValues.sku} onChange={handleChange} placeholder="Ej. VEST-AURO-1234" className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 uppercase font-mono text-sm shadow-sm" required />
-                <button type="button" onClick={generarSKU} className="bg-white hover:bg-gray-50 text-gray-700 px-3 rounded-lg border border-gray-300 transition-colors flex items-center justify-center cursor-pointer shadow-sm" title="Auto-generar SKU">
+                <input type="text" name="sku" value={formValues.sku} onChange={handleChange} className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg uppercase font-mono text-sm shadow-sm" required />
+                <button type="button" onClick={generarSKU} className="bg-white text-gray-700 px-3 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer shadow-sm">
                   <Wand2 className="w-5 h-5" />
                 </button>
               </div>
@@ -309,10 +333,10 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
           </div>
           
           <div className="pt-6 flex justify-end gap-3 border-t border-gray-100 mt-2">
-            <button type="button" onClick={onClose} className="px-5 py-2 text-sm font-bold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm cursor-pointer">
+            <button type="button" onClick={onClose} className="px-5 py-2 text-sm font-bold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer shadow-sm">
               Cancelar
             </button>
-            <button type="submit" disabled={guardando} className="px-5 py-2 text-sm font-bold text-gray-900 bg-yellow-400 rounded-lg hover:bg-yellow-500 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer">
+            <button type="submit" disabled={guardando} className="px-5 py-2 text-sm font-bold text-gray-900 bg-yellow-400 rounded-lg hover:bg-yellow-500 flex items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer">
               {guardando && <Loader2 className="w-4 h-4 animate-spin" />}
               {guardando ? 'Guardando...' : 'Guardar Producto'}
             </button>

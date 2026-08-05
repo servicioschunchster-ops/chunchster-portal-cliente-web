@@ -1,75 +1,78 @@
 import { fetchAPI } from './api';
 
-export const invService = {
-  // ==========================================
-  // MÓDULO DE CATÁLOGO (Products)
-  // ==========================================
+// ==========================================
+// SERVICIO DE CATÁLOGO
+// ==========================================
+export class CatalogService {
+  constructor(apiClient) {
+    this.apiClient = apiClient;
+    this.basePath = '/catalog';
+  }
 
-  // Listar todos los productos activos (GET /catalog)
-  // Puede recibir query params opcionales y tags en el body para búsquedas avanzadas
-  getCatalog: async (params = {}, bodyTags = null) => {
+  async getCatalog(params = {}) {
+    // Si hay tags, se deben procesar como query params, no como body
     const query = new URLSearchParams(params).toString();
-    const endpoint = query ? `/catalog?${query}` : '/catalog';
+    const endpoint = query ? `${this.basePath}?${query}` : this.basePath;
     
-    const options = { method: 'GET' };
-    if (bodyTags) {
-      options.body = JSON.stringify({ tags: bodyTags });
-    }
-    
-    return await fetchAPI(endpoint, options);
-  },
+    return await this.apiClient(endpoint, { method: 'GET' });
+  }
 
-  // Obtener detalles completos de un producto incluyendo inventario (GET /catalog/{product_id})
-  getProductDetails: async (productId) => {
-    return await fetchAPI(`/catalog/${productId}`, { method: 'GET' });
-  },
+  async getProductDetails(productId) {
+    return await this.apiClient(`${this.basePath}/${productId}`, { method: 'GET' });
+  }
 
-  // Crear un nuevo producto (POST /catalog)
-  createProduct: async (productData) => {
-    return await fetchAPI('/catalog', {
+  async createProduct(productData) {
+    return await this.apiClient(this.basePath, {
       method: 'POST',
       body: JSON.stringify(productData),
     });
-  },
+  }
 
-  // Actualizar un producto existente (PUT /catalog/{product_id})
-  updateProduct: async (productId, updateData) => {
-    return await fetchAPI(`/catalog/${productId}`, {
+  async updateProduct(productId, updateData) {
+    return await this.apiClient(`${this.basePath}/${productId}`, {
       method: 'PUT',
       body: JSON.stringify(updateData),
     });
-  },
+  }
 
-  // Desactivar un producto / Soft delete (DELETE /catalog/{product_id})
-  deleteProduct: async (productId) => {
-    return await fetchAPI(`/catalog/${productId}`, { method: 'DELETE' });
-  },
+  async deleteProduct(productId) {
+    return await this.apiClient(`${this.basePath}/${productId}`, { method: 'DELETE' });
+  }
 
-  // ==========================================
-  // MÓDULO DE INVENTARIO (Stock)
-  // ==========================================
-
-  // Listar todo el inventario/stock del tenant (GET /inventory)
-  getInventory: async (params = {}) => {
-    const query = new URLSearchParams(params).toString();
-    const endpoint = query ? `/inventory?${query}` : '/inventory';
-    
-    return await fetchAPI(endpoint, { method: 'GET' });
-  },
-  // Subir imagen de un producto (POST /catalog/{product_id}/images)
-  uploadProductImage: async (productId, imageData) => {
-    return await fetchAPI(`/catalog/${productId}/images`, {
+  async uploadProductImage(productId, imageData) {
+    return await this.apiClient(`${this.basePath}/${productId}/images`, {
       method: 'POST',
       body: JSON.stringify(imageData),
     });
-  },
+  }
+}
 
-  // Actualizar cantidad disponible de una variante (PUT /inventory/{variant_key})
-  updateInventoryVariant: async (variantKey, productId, data) => {
-    // productId es requerido como query param
-    return await fetchAPI(`/inventory/${variantKey}?product_id=${productId}`, {
+// ==========================================
+// SERVICIO DE INVENTARIO
+// ==========================================
+export class InventoryService {
+  constructor(apiClient) {
+    this.apiClient = apiClient;
+    this.basePath = '/inventory';
+  }
+
+  async getInventory(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const endpoint = query ? `${this.basePath}?${query}` : this.basePath;
+    
+    return await this.apiClient(endpoint, { method: 'GET' });
+  }
+
+  async updateInventoryVariant(variantKey, productId, data) {
+    return await this.apiClient(`${this.basePath}/${variantKey}?product_id=${productId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
-};
+}
+
+// ==========================================
+// INSTANCIAS (Exportación para el uso en componentes)
+// ==========================================
+export const catalogService = new CatalogService(fetchAPI);
+export const inventoryService = new InventoryService(fetchAPI);
