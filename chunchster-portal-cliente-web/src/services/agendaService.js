@@ -5,6 +5,15 @@ export const agendaService = {
   // MÓDULO DE PEDIDOS PRINCIPAL (Orders)
   // ==========================================
 
+  // Opcional: Obtener TODOS los agendamientos (GET /orders)
+  // Nota: Este endpoint no está explícitamente en el PDF, pero es estándar en REST.
+  // Te servirá para mostrar la lista de agendamientos en tu tabla/vista principal.
+  getAllOrders: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/orders?${queryString}` : '/orders';
+    return await fetchAPI(url, { method: 'GET' });
+  },
+
   // Crear un nuevo pedido/agendamiento (POST /orders)
   createOrder: async (orderData) => {
     return await fetchAPI('/orders', {
@@ -31,9 +40,10 @@ export const agendaService = {
     });
   },
 
-  // Cambiar el estado del pedido (PATCH /orders/{order_id})
+  // Cambiar el estado del pedido (PATCH /orders/{order_id}/status)
   updateOrderStatus: async (orderId, status, notes) => {
-    return await fetchAPI(`/orders/${orderId}`, {
+    // ACTUALIZADO: Se usa el endpoint dedicado /status introducido en la versión 1.1
+    return await fetchAPI(`/orders/${orderId}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status, notes }),
     });
@@ -84,5 +94,5 @@ export const agendaService = {
   // Listar todas las transacciones de un pedido (GET /orders/{order_id}/transactions)
   getTransactions: async (orderId) => {
     return await fetchAPI(`/orders/${orderId}/transactions`, { method: 'GET' });
-  },
+  }
 };
