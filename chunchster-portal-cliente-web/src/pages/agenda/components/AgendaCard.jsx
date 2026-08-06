@@ -5,10 +5,19 @@ export default function AgendaCard({ pedido, onUpdateStatus, onEditDates }) {
   const isCancelled = pedido.status === 'cancelled';
   const isConfirmed = pedido.status === 'confirmed';
 
+  // Solución definitiva al bug de zona horaria (Timezone Offset)
   const formatearFechaCorta = (fechaIso) => {
     if (!fechaIso) return '-';
-    const d = new Date(fechaIso);
-    if (fechaIso.length <= 10) d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
+    
+    // 1. Cortamos cualquier hora o zona horaria extra (ej. "2026-01-25T00:00:00Z" -> "2026-01-25")
+    const fechaLimpia = fechaIso.substring(0, 10);
+    
+    // 2. Separamos manualmente el año, mes y día
+    const [year, month, day] = fechaLimpia.split('-');
+    
+    // 3. Forzamos a JS a crear la fecha en la zona horaria LOCAL exacta al mediodía para evitar saltos
+    const d = new Date(year, month - 1, day, 12, 0, 0);
+    
     return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' });
   };
 
@@ -78,14 +87,14 @@ export default function AgendaCard({ pedido, onUpdateStatus, onEditDates }) {
         <button 
           onClick={() => onUpdateStatus(pedido.order_id, 'confirmed')} 
           disabled={isConfirmed || isCancelled}
-          className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-30"
+          className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-30 cursor-pointer"
         >
           <CheckCircle className="w-5 h-5" />
         </button>
         <button 
           onClick={() => onUpdateStatus(pedido.order_id, 'cancelled')} 
           disabled={isCancelled}
-          className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30"
+          className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 cursor-pointer"
         >
           <XCircle className="w-5 h-5" />
         </button>
