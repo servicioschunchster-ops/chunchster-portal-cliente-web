@@ -15,11 +15,11 @@ export default function OrderModal({ isOpen, onClose, onOrderCreated }) {
     rental_start: '',
     rental_end: '',
     product_id: '',
+    variant_key: 'DEFAULT', // Necesario para el envío a la API[cite: 1]
     quantity: 1,
     unit_price: 0,
     rental_days: 3,
     rental_deposit_unit: 100,
-    // Campos de dirección requeridos si es delivery
     street: '',
     district: '',
     city: 'Lima',
@@ -30,7 +30,7 @@ export default function OrderModal({ isOpen, onClose, onOrderCreated }) {
 
   useEffect(() => {
     if (isOpen) {
-      setFormValues(formInicial); // Resetear formulario al abrir
+      setFormValues(formInicial); 
       cargarInventarioParaSelector();
     }
   }, [isOpen]);
@@ -48,7 +48,9 @@ export default function OrderModal({ isOpen, onClose, onOrderCreated }) {
           ...prev,
           product_id: primero.product_id,
           unit_price: primero.rental_price_day || primero.base_price || 0,
-          rental_deposit_unit: primero.rental_deposit || 100
+          rental_deposit_unit: primero.rental_deposit || 100,
+          // Tomar la primera variante o dejar DEFAULT
+          variant_key: primero.attributes?.tallas?.[0] ? `${primero.attributes.tallas[0]}-DEFAULT` : 'DEFAULT'
         }));
       }
     } catch (err) {
@@ -64,6 +66,7 @@ export default function OrderModal({ isOpen, onClose, onOrderCreated }) {
     const { name, value } = e.target;
     setFormValues(prev => ({ ...prev, [name]: value }));
 
+    // Autocompletar precios según selección de catálogo[cite: 1]
     if (name === 'product_id') {
       const prodSeleccionado = productos.find(p => p.product_id === value);
       if (prodSeleccionado) {
@@ -81,7 +84,7 @@ export default function OrderModal({ isOpen, onClose, onOrderCreated }) {
     e.preventDefault();
     setGuardando(true);
 
-    // Construcción del payload según documentación de AWS
+    // Estructura raíz requerida para la API versión 1.1[cite: 1]
     const orderData = {
       customer_id: formValues.customer_id.trim(),
       order_type: formValues.order_type,
@@ -89,23 +92,24 @@ export default function OrderModal({ isOpen, onClose, onOrderCreated }) {
       items: [
         {
           product_id: formValues.product_id,
-          inventory_id: "inv-001", // Requerido en la DB
-          variant_key: "DEFAULT", // Requerido en la DB
+          inventory_id: "inv-001", // Nota: En producción esto debe venir del GET /inventory
+          variant_key: formValues.variant_key,
           quantity: parseInt(formValues.quantity),
           unit_price: parseFloat(formValues.unit_price)
         }
       ]
     };
 
-    // Agregar variables de alquiler
+    // Agregar fechas obligatorias a nivel raíz y configuración de depósito en el ítem si es alquiler[cite: 1]
     if (formValues.order_type === 'rental') {
       orderData.rental_start = formValues.rental_start;
       orderData.rental_end = formValues.rental_end;
+      // Los días y el depósito unitario van a nivel de ítem[cite: 1]
       orderData.items[0].rental_days = parseInt(formValues.rental_days);
       orderData.items[0].rental_deposit_unit = parseFloat(formValues.rental_deposit_unit);
     }
 
-    // Construir objeto de dirección si es delivery (Obligatorio en la API)
+    // El objeto delivery_address es requerido solo si delivery_type es 'delivery'[cite: 1]
     if (formValues.delivery_type === 'delivery') {
       orderData.delivery_address = {
         street: formValues.street,
@@ -163,7 +167,7 @@ export default function OrderModal({ isOpen, onClose, onOrderCreated }) {
             </div>
           </div>
 
-          {/* CAMPOS DINÁMICOS: DIRECCIÓN (Si es delivery) */}
+          {/* CAMPOS DINÁMICOS: DIRECCIÓN (Obligatorios si delivery_type es delivery)[cite: 1] */}
           {formValues.delivery_type === 'delivery' && (
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3">
               <div className="flex items-center gap-2 text-gray-800 font-semibold text-sm mb-2">
@@ -177,7 +181,7 @@ export default function OrderModal({ isOpen, onClose, onOrderCreated }) {
             </div>
           )}
 
-          {/* CAMPOS DINÁMICOS: FECHAS (Si es alquiler) */}
+          {/* CAMPOS DINÁMICOS: FECHAS (Obligatorios si el order_type es rental)[cite: 1] */}
           {formValues.order_type === 'rental' && (
             <div className="grid grid-cols-2 gap-4 bg-yellow-50/50 p-4 rounded-lg border border-yellow-100">
               <div>
