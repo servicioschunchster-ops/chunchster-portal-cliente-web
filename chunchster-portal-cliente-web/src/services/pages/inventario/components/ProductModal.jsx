@@ -293,7 +293,7 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
       <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-3xl transform transition-all overflow-hidden max-h-[90vh] flex flex-col">
         
         <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-white">
-          <h3 className="font-display text-lg font-bold text-gray-800">
+          <h3 className="text-lg font-bold text-gray-800">
             {productoEditando ? 'Editar Producto' : 'Crear Nuevo Producto'}
           </h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-lg transition-colors cursor-pointer">

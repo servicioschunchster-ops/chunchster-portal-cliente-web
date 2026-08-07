@@ -11,7 +11,7 @@ export default function Lobby() {
             <Sparkles className="w-3.5 h-3.5 text-chunchster-yellow" />
             <span>Panel Operativo Activo</span>
           </div>
-          <h1 className="font-display text-2xl md:text-3xl font-bold">¡Bienvenido de vuelta, Admin!</h1>
+          <h1 className="text-2xl md:text-3xl font-bold">¡Bienvenido de vuelta, Admin!</h1>
           <p className="text-white/80 text-sm mt-1">Aquí tienes el pulso general de tu inventario y las reservas de hoy.</p>
         </div>
         <div className="flex gap-3">

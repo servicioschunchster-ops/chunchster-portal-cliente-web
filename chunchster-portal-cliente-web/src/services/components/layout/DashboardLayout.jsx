@@ -18,16 +18,15 @@ export default function DashboardLayout() {
       {/* --- NAVEGACIÓN: Barra Inferior (Móvil) / Sidebar (Desktop) --- */}
       <aside className="
         fixed bottom-0 left-0 z-50 w-full h-16 bg-chunchster text-white flex flex-row items-center justify-around shadow-[0_-4px_10px_rgba(0,0,0,0.1)]
-        md:relative md:w-64 md:h-screen md:flex-col md:justify-start md:shadow-none md:chunchster-ledger
+        md:relative md:w-64 md:h-screen md:flex-col md:justify-start md:shadow-none
       ">
         {/* Cabecera del Sidebar con Logo (Solo visible en Desktop) */}
-        <div className="hidden md:flex items-center gap-2.5 h-20 w-full px-5 border-b border-white/10">
-          <img src={logoChunchster} alt="Chunchster" className="h-9 w-9 rounded-lg bg-white p-1 shrink-0" />
-          <span className="font-display font-bold text-white text-base tracking-tight">Chunchster</span>
+        <div className="hidden md:flex items-center justify-center h-20 w-full border-b border-white/10 bg-black/10">
+          <img src={logoChunchster} alt="Chunchster" className="h-12 w-auto bg-white rounded p-1" />
         </div>
 
         {/* Enlaces de Navegación */}
-        <nav className="flex flex-row w-full justify-around md:flex-col md:p-3 md:space-y-1 md:mt-3 md:justify-start">
+        <nav className="flex flex-row w-full justify-around md:flex-col md:p-4 md:space-y-2 md:mt-4 md:justify-start">
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon; // Extraemos el componente del icono
@@ -36,17 +35,16 @@ export default function DashboardLayout() {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3 px-2 md:px-3.5 py-2 md:py-2.5 w-full rounded-lg md:rounded-xl transition-colors ${
+                className={`flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3 px-2 md:px-4 py-2 md:py-3 w-full rounded-lg transition-colors ${
                   isActive 
-                    ? 'text-chunchster-yellow md:bg-white/10 md:text-white md:font-bold' 
-                    : 'text-gray-300 hover:text-white md:hover:bg-white/5'
+                    ? 'text-chunchster-yellow md:bg-chunchster-yellow md:text-gray-900 md:font-bold md:shadow-md' 
+                    : 'text-gray-300 hover:text-white md:hover:bg-white/10'
                 }`}
               >
-                <Icon className="w-5 h-5 md:w-[18px] md:h-[18px]" strokeWidth={isActive ? 2.5 : 2} />
-                <span className={`text-[10px] md:text-sm ${isActive ? 'font-bold' : 'font-medium'}`}>
+                <Icon className="w-5 h-5 md:w-6 md:h-6" strokeWidth={isActive ? 2.5 : 2} />
+                <span className={`text-[10px] md:text-base ${isActive ? 'font-bold' : ''}`}>
                   {item.label}
                 </span>
-                {isActive && <span className="hidden md:block ml-auto w-1.5 h-1.5 rounded-full bg-chunchster-yellow" />}
               </Link>
             );
           })}
@@ -54,10 +52,10 @@ export default function DashboardLayout() {
           {/* Botón de Cerrar Sesión */}
           <Link 
             to="/login" 
-            className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3 px-2 md:px-3.5 py-2 md:py-2.5 w-full text-gray-300 hover:text-white md:hover:bg-white/5 rounded-lg md:rounded-xl transition-colors md:absolute md:bottom-4 md:w-[calc(100%-1.5rem)] md:border-t md:border-white/10 md:pt-4"
+            className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3 px-2 md:px-4 py-2 md:py-3 w-full text-gray-300 hover:text-white md:hover:bg-white/10 rounded-lg transition-colors md:absolute md:bottom-4 md:w-[calc(100%-2rem)] md:border-t md:border-white/10 md:pt-4"
           >
-            <LogOut className="w-5 h-5 md:w-[18px] md:h-[18px]" strokeWidth={2} />
-            <span className="text-[10px] md:text-sm font-medium">Salir</span>
+            <LogOut className="w-5 h-5 md:w-6 md:h-6" strokeWidth={2} />
+            <span className="text-[10px] md:text-base">Salir</span>
           </Link>
         </nav>
       </aside>
@@ -68,18 +66,17 @@ export default function DashboardLayout() {
         {/* Barra superior (Topbar) */}
         <header className="flex items-center justify-between h-16 px-6 bg-white border-b border-gray-200">
           
-          <div className="md:hidden flex items-center gap-2">
-             <img src={logoChunchster} alt="Chunchster" className="h-8 w-8 rounded-md" />
-             <span className="font-display font-bold text-chunchster">Chunchster</span>
+          <div className="md:hidden flex items-center">
+             <img src={logoChunchster} alt="Chunchster" className="h-8 w-auto" />
           </div>
           
-          <h2 className="hidden md:block font-display text-xl font-semibold text-gray-800">
+          <h2 className="hidden md:block text-xl font-semibold text-gray-800">
             Panel de Control
           </h2>
           
           {/* Info del usuario a la derecha */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-chunchster-yellow flex items-center justify-center text-chunchster-dark font-bold text-sm">
+            <div className="w-8 h-8 rounded-full bg-chunchster-yellow flex items-center justify-center text-white font-bold">
               A
             </div>
             <span className="hidden sm:block text-sm font-medium text-gray-700">Admin</span>

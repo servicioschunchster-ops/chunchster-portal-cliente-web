@@ -58,7 +58,7 @@ export default function Agenda() {
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
         <div>
-          <h1 className="font-display text-2xl font-bold text-gray-900">Panel de Agendamientos</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Panel de Agendamientos</h1>
           <p className="text-sm text-gray-500 mt-1">Monitorea y gestiona reservas y alquileres.</p>
         </div>
         <div className="flex gap-3 w-full md:w-auto">
