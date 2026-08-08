@@ -36,7 +36,10 @@ export default function Login() {
   return (
     <div className="min-h-screen flex bg-chunchster-cream">
       {/* ---------- PANEL DE MARCA (oculto en mobile) ---------- */}
-      <div className="hidden lg:flex lg:w-[44%] relative flex-col justify-between bg-gradient-to-br from-chunchster to-chunchster-dark text-white p-12 chunchster-ledger overflow-hidden">
+      <div className="hidden lg:flex lg:w-[44%] relative flex-col justify-between bg-gradient-to-br from-chunchster to-chunchster-dark text-white p-12 overflow-hidden">
+        {/* Textura de líneas en su propia capa: si comparte background-image con el
+            gradiente de arriba, una de las dos declaraciones pisa a la otra por completo. */}
+        <div className="absolute inset-0 chunchster-ledger pointer-events-none" />
         <div className="absolute -right-24 -top-24 w-72 h-72 rounded-full bg-chunchster-yellow/10 blur-3xl" />
         <div className="absolute -left-16 bottom-0 w-64 h-64 rounded-full bg-white/5 blur-3xl" />
 
