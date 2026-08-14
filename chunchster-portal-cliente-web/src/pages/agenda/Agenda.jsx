@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { agendaService } from '../../services/agendaService';
-import { customerService } from '../../services/customerService';
+import { agendaService } from '../../services/agendaService.js';
+import { customerService } from '../../services/customerService.js';
 import { Loader2, Plus, Search, CalendarClock, ShoppingBag, AlertCircle } from 'lucide-react';
-import OrderModal from './components/OrderModal';
-import AgendaCard from './components/AgendaCard';
-import EditDatesModal from './components/EditDatesModal';
+import OrderModal from './components/OrderModal.jsx';
+import AgendaCard from './components/AgendaCard.jsx';
+import EditDatesModal from './components/EditDatesModal.jsx';
 import { traducirEstado, ESTADOS_ORDEN } from '../../utils/Orderhelpers.js';
 
 // Normaliza la respuesta de GET /customers sin importar qué forma exacta
@@ -81,8 +81,10 @@ export default function Agenda() {
     }
 
     const idsUnicos = [...new Set(orders.map((o) => o.customer_id).filter(Boolean))];
+    // silent: true porque aquí un 404 es un caso esperado (customer_id
+    // huérfano de un pedido viejo/de prueba), no un error real de la app.
     const resultados = await Promise.allSettled(
-      idsUnicos.map((id) => customerService.getCustomerById(id))
+      idsUnicos.map((id) => customerService.getCustomerById(id, { silent: true }))
     );
 
     const mapa = new Map();

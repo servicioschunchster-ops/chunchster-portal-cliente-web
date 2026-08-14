@@ -20,9 +20,15 @@ export class CustomerService {
     return await this.apiClient(endpoint, { method: 'GET' });
   }
 
-  /** GET /customers/{customer_id} */
-  async getCustomerById(customerId) {
-    return await this.apiClient(`${this.basePath}/${customerId}`, { method: 'GET' });
+  /**
+   * GET /customers/{customer_id}
+   * @param {string} customerId
+   * @param {Object} [options] - Pasa { silent: true } cuando un 404 es un
+   *   resultado esperado del flujo (ej. resolver clientes en lote y algunos
+   *   IDs no existen) y no quieres que ensucie la consola como error real.
+   */
+  async getCustomerById(customerId, options = {}) {
+    return await this.apiClient(`${this.basePath}/${customerId}`, { method: 'GET', ...options });
   }
 
   /**

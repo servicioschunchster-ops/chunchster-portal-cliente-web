@@ -6,16 +6,27 @@ const TENANT_ID = import.meta.env.VITE_TENANT_ID;
 /**
  * Cliente base para consumir la API de AWS.
  * Inyecta automáticamente los headers requeridos.
+ *
+ * @param {string} endpoint
+ * @param {Object} options - Opciones estándar de fetch (method, body, headers...)
+ *   más un flag propio opcional:
+ * @param {boolean} [options.silent] - Si es true, no hace console.error cuando
+ *   la llamada falla (usa console.debug en su lugar). Pensado para casos donde
+ *   el caller YA espera que la llamada pueda fallar como parte normal del flujo
+ *   (ej. "verificar si este customer_id existe"), y no queremos ensuciar la
+ *   consola con algo que no es un bug. No cambia el comportamiento default.
  */
 export const fetchAPI = async (endpoint, options = {}) => {
+  const { silent, ...fetchOptions } = options;
+
   try {
     const response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
+      ...fetchOptions,
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': API_KEY,
         'x-tenant-id': TENANT_ID,
-        ...options.headers,
+        ...fetchOptions.headers,
       },
     });
 
@@ -28,7 +39,11 @@ export const fetchAPI = async (endpoint, options = {}) => {
 
     return data;
   } catch (error) {
-    console.error(`Error en llamada a API [${endpoint}]:`, error);
+    if (silent) {
+      console.debug(`[esperado] Error en llamada a API [${endpoint}]:`, error.message);
+    } else {
+      console.error(`Error en llamada a API [${endpoint}]:`, error);
+    }
     throw error;
   }
 };
