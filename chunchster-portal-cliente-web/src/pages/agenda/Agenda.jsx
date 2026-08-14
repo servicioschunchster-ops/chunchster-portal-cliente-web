@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { agendaService } from '../../services/agendaService.js';
-import { customerService } from '../../services/customerService.js';
+import { agendaService } from '../../services/agendaService';
+import { customerService } from '../../services/customerService';
 import { Loader2, Plus, Search, CalendarClock, ShoppingBag, AlertCircle } from 'lucide-react';
-import OrderModal from './components/OrderModal.jsx';
-import AgendaCard from './components/AgendaCard.jsx';
-import EditDatesModal from './components/EditDatesModal.jsx';
+import OrderModal from './components/OrderModal';
+import AgendaTable from './components/AgendaTable';
+import AgendaStats from './components/AgendaStats';
+import EditDatesModal from './components/EditDatesModal';
 import { traducirEstado, ESTADOS_ORDEN } from '../../utils/Orderhelpers.js';
 
 // Normaliza la respuesta de GET /customers sin importar qué forma exacta
@@ -60,7 +61,7 @@ export default function Agenda() {
 
   /**
    * Intenta resolver los clientes con GET /customers (1 sola llamada).
-   * Si ese endpoint falla (ahora mismo da 403 - MissingAuthenticationTokenException,
+   * Si ese endpoint falla (403 - MissingAuthenticationTokenException,
    * indicando que la ruta de colección no está desplegada en API Gateway),
    * cae a resolver solo los customer_id que aparecen en los pedidos vía
    * GET /customers/{id}, que sí funciona. Evita romper toda la agenda por
@@ -73,9 +74,6 @@ export default function Agenda() {
       if (clientes.length > 0) {
         return new Map(clientes.map((c) => [c.customer_id, c]));
       }
-      // Lista vacía no es necesariamente un error, pero si hay pedidos con
-      // customer_id y la lista vino vacía, probablemente el shape de la
-      // respuesta es distinto al esperado; igual probamos el fallback.
     } catch (err) {
       console.warn('GET /customers (lista) no disponible, se resuelve por ID individual:', err);
     }
@@ -156,6 +154,9 @@ export default function Agenda() {
         </div>
       </header>
 
+      {/* Dashboard: KPIs + distribución por estado, sobre lo que está filtrado */}
+      {!cargando && <AgendaStats pedidos={pedidosFiltrados} />}
+
       {/* Buscador + filtro de estado */}
       <div className="flex flex-col sm:flex-row gap-3 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
         <div className="relative flex-1">
@@ -209,11 +210,7 @@ export default function Agenda() {
                 <CalendarClock className="w-5 h-5 text-yellow-500" /> Alquileres Activos
                 <span className="text-xs font-normal text-gray-400">({alquileres.length})</span>
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {alquileres.map((pedido) => (
-                  <AgendaCard key={pedido.order_id} pedido={pedido} onUpdateStatus={cambiarEstadoOrden} onEditDates={abrirModalEdicionFechas} />
-                ))}
-              </div>
+              <AgendaTable pedidos={alquileres} onUpdateStatus={cambiarEstadoOrden} onEditDates={abrirModalEdicionFechas} />
             </section>
           )}
 
@@ -224,11 +221,7 @@ export default function Agenda() {
                 <ShoppingBag className="w-5 h-5 text-blue-500" /> Ventas Directas
                 <span className="text-xs font-normal text-gray-400">({ventas.length})</span>
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {ventas.map((pedido) => (
-                  <AgendaCard key={pedido.order_id} pedido={pedido} onUpdateStatus={cambiarEstadoOrden} onEditDates={abrirModalEdicionFechas} />
-                ))}
-              </div>
+              <AgendaTable pedidos={ventas} onUpdateStatus={cambiarEstadoOrden} onEditDates={abrirModalEdicionFechas} />
             </section>
           )}
 
