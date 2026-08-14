@@ -9,20 +9,18 @@ const ORIENTACIONES = [
   { id: 'RIGHT', label: 'Derecha' }
 ];
 
-const CATEGORIAS_SUGERIDAS = [
-  'GENERAL', 'VESTIDOS-NOCHE', 'VESTIDOS-BODA', 'ACCESORIOS', 'Ternos'
+// 1. AQUI DEFINIMOS LAS CATEGORIAS EXACTAS
+const CATEGORIAS = [
+  'Vestidos', 'Zapatos de Dama', 'Ternos', 'Zapatos Varón', 
+  'Accesorios Damas', 'Accesorios Caballero', 'Blazer'
 ];
 
-// Genera un id corto único para las filas dinámicas de atributos (key/value)
 const nuevaFilaAtributo = (key = '', value = '') => ({
   id: `attr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   key,
   value
 });
 
-// Convierte el objeto "attributes" del producto (viene del API) a filas editables.
-// Los valores que son arreglos (ej. colores: ["Negro"]) se muestran como texto
-// separado por comas y se reconstruyen como arreglo al guardar.
 const attributesAFilas = (attributes) => {
   if (!attributes || typeof attributes !== 'object') return [nuevaFilaAtributo()];
   const filas = Object.entries(attributes).map(([key, value]) =>
@@ -35,12 +33,11 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
   const [guardando, setGuardando] = useState(false);
   
   const [formValues, setFormValues] = useState({
-    name: '', description: '', sku: '', category_id: 'GENERAL', product_type: 'rental',
+    name: '', description: '', sku: '', category_id: CATEGORIAS[0], product_type: 'rental',
     base_price: '', rental_price_day: '', rental_deposit: '',
     tags: '', initial_stock: ''
   });
 
-  // Atributos dinámicos: lista de pares clave/valor (ej. colores, tallas, marca, materiales...)
   const [atributos, setAtributos] = useState([nuevaFilaAtributo()]);
 
   const [galeria, setGaleria] = useState({
@@ -64,19 +61,18 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
           name: productoEditando.name || '',
           description: productoEditando.description || '',
           sku: productoEditando.sku || '',
-          category_id: productoEditando.category_id || 'GENERAL',
+          category_id: productoEditando.category_id || CATEGORIAS[0],
           product_type: productoEditando.product_type || 'rental',
           base_price: productoEditando.base_price || '',
           rental_price_day: productoEditando.rental_price_day || '',
           rental_deposit: productoEditando.rental_deposit || '',
           tags: (productoEditando.tags || []).join(', '),
-          initial_stock: '' // initial_stock solo aplica al crear, no se edita después
+          initial_stock: '' 
         });
         setAtributos(attributesAFilas(productoEditando.attributes));
 
         const urls = productoEditando.images || [];
         
-        // CORRECCIÓN: Buscamos la URL basándonos en la carpeta de orientación de AWS
         const getUrlPorOrientacion = (orientacion) => {
           return urls.find(url => url.includes(`/${orientacion}/`)) || null;
         };
@@ -89,7 +85,7 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
         });
       } else {
         setFormValues({
-          name: '', description: '', sku: '', category_id: 'GENERAL', product_type: 'rental',
+          name: '', description: '', sku: '', category_id: CATEGORIAS[0], product_type: 'rental',
           base_price: '', rental_price_day: '', rental_deposit: '',
           tags: '', initial_stock: ''
         });
@@ -111,7 +107,6 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
     setFormValues(prev => ({ ...prev, [name]: value }));
   };
 
-  // ----- Atributos dinámicos (clave/valor) -----
   const handleAtributoChange = (id, campo, valor) => {
     setAtributos(prev => prev.map(fila => (fila.id === id ? { ...fila, [campo]: valor } : fila)));
   };
@@ -124,8 +119,6 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
     setAtributos(prev => (prev.length > 1 ? prev.filter(fila => fila.id !== id) : prev));
   };
 
-  // Convierte las filas visibles en el objeto "attributes" que espera la API.
-  // Si el valor tiene comas, se envía como arreglo (ej. "Negro, Azul" -> ["Negro","Azul"]).
   const filasAAttributes = (filas) => {
     const attributes = {};
     filas.forEach(({ key, value }) => {
@@ -216,7 +209,6 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
       .filter(slot => slot.url && !slot.isNew)
       .map(slot => slot.url);
 
-    // tags: "noche, gala, boda" -> ["noche", "gala", "boda"]
     const tagsArray = formValues.tags
       .split(',')
       .map(t => t.trim())
@@ -241,8 +233,6 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
       productoData.rental_deposit = parseFloat(formValues.rental_deposit);
     }
 
-    // initial_stock solo aplica al crear (POST /catalog); en edición se maneja
-    // desde el módulo de Inventario (PUT /inventory/{variant_key})
     if (!productoEditando && formValues.initial_stock !== '') {
       productoData.initial_stock = parseInt(formValues.initial_stock, 10);
     }
@@ -371,21 +361,20 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
               />
             </div>
             
+            {/* 2. AQUI REEMPLAZAMOS EL DATALIST POR UN SELECT */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">Categoría</label>
-              <input
-                type="text"
+              <select
                 name="category_id"
-                list="categorias-sugeridas"
                 value={formValues.category_id}
                 onChange={handleChange}
-                placeholder="Ej. Ternos"
                 className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 shadow-sm"
                 required
-              />
-              <datalist id="categorias-sugeridas">
-                {CATEGORIAS_SUGERIDAS.map(cat => <option key={cat} value={cat} />)}
-              </datalist>
+              >
+                {CATEGORIAS.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
             </div>
             
             <div>
@@ -456,7 +445,6 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
             )}
           </div>
 
-          {/* Atributos dinámicos (clave / valor) — ej. marca, colores, tallas, materiales... */}
           <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-sm font-bold text-gray-700">Atributos del Producto</h4>

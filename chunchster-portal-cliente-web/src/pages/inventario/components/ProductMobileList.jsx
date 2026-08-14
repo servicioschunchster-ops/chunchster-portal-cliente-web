@@ -17,7 +17,9 @@ export default function ProductMobileList({ productos, onEdit, onDelete }) {
                 )}
               </div>
               <div className="flex-1">
-                <h3 className="font-bold text-gray-800">{prod.name}</h3>
+                {/* AQUI MOSTRAMOS LA CATEGORIA EN MOBILE */}
+                <span className="text-[10px] font-bold tracking-wider text-chunchster uppercase">{prod.category_id}</span>
+                <h3 className="font-bold text-gray-800 leading-tight">{prod.name}</h3>
                 <p className="text-xs text-gray-500 font-mono mt-0.5">SKU: {prod.sku}</p>
               </div>
               <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium shrink-0">Activo</span>

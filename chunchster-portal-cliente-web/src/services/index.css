@@ -1,8 +1,0 @@
-@import "tailwindcss";
-
-@theme {
-  /* Colores corporativos de Chunchster */
-  --color-chunchster: #1a5f65;         /* Verde/Azul oscuro del texto */
-  --color-chunchster-hover: #248189;   /* Un tono más claro para botones al pasar el mouse */
-  --color-chunchster-yellow: #f2ae30;  /* Amarillo del ornitorrinco */
-}
