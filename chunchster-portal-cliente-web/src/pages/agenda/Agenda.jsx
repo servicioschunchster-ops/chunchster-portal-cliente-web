@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { agendaService } from '../../services/agendaService.js';
-import { customerService } from '../../services/customerService.js';
+import { agendaService } from '../../services/agendaService';
+import { customerService } from '../../services/customerService';
 import { Loader2, Plus, Search, CalendarClock, ShoppingBag, AlertCircle } from 'lucide-react';
-import OrderModal from './components/OrderModal.jsx';
-import AgendaCard from './components/AgendaCard.jsx';
-import EditDatesModal from './components/EditDatesModal.jsx';
+import OrderModal from './components/OrderModal';
+import AgendaCard from './components/AgendaCard';
+import EditDatesModal from './components/EditDatesModal';
 import { traducirEstado, ESTADOS_ORDEN } from '../../utils/Orderhelpers.js';
 
 // Normaliza la respuesta de GET /customers sin importar qué forma exacta
@@ -37,30 +37,13 @@ export default function Agenda() {
     setCargando(true);
     setError(null);
     try {
-      // allSettled: si /customers falla (403, CORS, etc.) igual queremos
-      // mostrar los pedidos — solo se pierde el nombre/teléfono del cliente
-      // y la card cae de vuelta a mostrar el customer_id.
-      const [ordersResult, customersResult] = await Promise.allSettled([
-        agendaService.getAllOrders(),
-        customerService.getAllCustomers(),
-      ]);
+      const ordersRes = await agendaService.getAllOrders();
+      const orders = ordersRes.data?.orders || [];
 
-      if (ordersResult.status === 'rejected') {
-        throw ordersResult.reason;
-      }
-      const orders = ordersResult.value.data?.orders || [];
-
-      let clientesPorId = new Map();
-      if (customersResult.status === 'fulfilled') {
-        const clientes = extraerListaClientes(customersResult.value);
-        clientesPorId = new Map(clientes.map((c) => [c.customer_id, c]));
-      } else {
-        console.error('No se pudieron cargar los clientes (se muestran pedidos sin nombre/teléfono):', customersResult.reason);
-      }
+      const clientesPorId = await resolverClientesDeOrdenes(orders);
 
       // Adjuntamos el cliente completo a cada pedido para que la card tenga
-      // nombre, teléfono, etc. sin volver a golpear la API. Si no hubo
-      // clientes disponibles, queda null y la card usa el fallback.
+      // nombre, teléfono, etc. sin volver a golpear la API en el render.
       const pedidosConCliente = orders.map((o) => ({
         ...o,
         cliente: clientesPorId.get(o.customer_id) || null,
@@ -73,6 +56,42 @@ export default function Agenda() {
     } finally {
       setCargando(false);
     }
+  };
+
+  /**
+   * Intenta resolver los clientes con GET /customers (1 sola llamada).
+   * Si ese endpoint falla (ahora mismo da 403 - MissingAuthenticationTokenException,
+   * indicando que la ruta de colección no está desplegada en API Gateway),
+   * cae a resolver solo los customer_id que aparecen en los pedidos vía
+   * GET /customers/{id}, que sí funciona. Evita romper toda la agenda por
+   * un endpoint que no está disponible.
+   */
+  const resolverClientesDeOrdenes = async (orders) => {
+    try {
+      const customersRes = await customerService.getAllCustomers();
+      const clientes = extraerListaClientes(customersRes);
+      if (clientes.length > 0) {
+        return new Map(clientes.map((c) => [c.customer_id, c]));
+      }
+      // Lista vacía no es necesariamente un error, pero si hay pedidos con
+      // customer_id y la lista vino vacía, probablemente el shape de la
+      // respuesta es distinto al esperado; igual probamos el fallback.
+    } catch (err) {
+      console.warn('GET /customers (lista) no disponible, se resuelve por ID individual:', err);
+    }
+
+    const idsUnicos = [...new Set(orders.map((o) => o.customer_id).filter(Boolean))];
+    const resultados = await Promise.allSettled(
+      idsUnicos.map((id) => customerService.getCustomerById(id))
+    );
+
+    const mapa = new Map();
+    resultados.forEach((r, i) => {
+      if (r.status === 'fulfilled' && r.value?.data) {
+        mapa.set(idsUnicos[i], r.value.data);
+      }
+    });
+    return mapa;
   };
 
   const cambiarEstadoOrden = async (orderId, nuevoEstado) => {
