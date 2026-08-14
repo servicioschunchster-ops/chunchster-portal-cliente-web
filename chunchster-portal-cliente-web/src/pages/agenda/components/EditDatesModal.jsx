@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Loader2, Calendar, AlertCircle } from 'lucide-react';
 import { agendaService } from '../../../services/agendaService';
-import { traducirTipoOrden } from '../../../utils/orderHelpers';
+import { traducirTipoOrden } from '../../../utils/Orderhelpers.js';
 
 export default function EditDatesModal({ isOpen, onClose, pedido, onDatesUpdated }) {
   const [guardando, setGuardando] = useState(false);

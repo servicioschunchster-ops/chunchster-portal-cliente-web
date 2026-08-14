@@ -5,7 +5,7 @@ import { Loader2, Plus, Search, CalendarClock, ShoppingBag, AlertCircle } from '
 import OrderModal from './components/OrderModal';
 import AgendaCard from './components/AgendaCard';
 import EditDatesModal from './components/EditDatesModal';
-import { traducirEstado, ESTADOS_ORDEN } from '../../utils/Orderhelpers';
+import { traducirEstado, ESTADOS_ORDEN } from '../../utils/Orderhelpers.js';
 
 // Normaliza la respuesta de GET /customers sin importar qué forma exacta
 // devuelva el backend (data.customers, data.items, o un array plano).

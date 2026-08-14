@@ -9,7 +9,7 @@ import {
   XCircle,
   Pencil,
 } from 'lucide-react';
-import { traducirEstado, ESTADO_COLOR, traducirTipoOrden } from '../../../utils/orderHelpers';
+import { traducirEstado, ESTADO_COLOR, traducirTipoOrden } from '../../../utils/Orderhelpers.js';
 
 // Formateador de fecha fuera del componente: no se re-crea en cada render.
 const formatearFechaCorta = (fechaIso) => {
