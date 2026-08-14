@@ -6,10 +6,9 @@ import OrderModal from './components/OrderModal';
 import AgendaTable from './components/AgendaTable';
 import AgendaStats from './components/AgendaStats';
 import EditDatesModal from './components/EditDatesModal';
+import OrderDetailModal from './components/OrderDetailModal';
 import { traducirEstado, ESTADOS_ORDEN } from '../../utils/Orderhelpers.js';
 
-// Normaliza la respuesta de GET /customers sin importar qué forma exacta
-// devuelva el backend (data.customers, data.items, o un array plano).
 const extraerListaClientes = (customersRes) => {
   const d = customersRes?.data;
   if (Array.isArray(d)) return d;
@@ -22,13 +21,15 @@ export default function Agenda() {
   const [error, setError] = useState(null);
 
   const [busqueda, setBusqueda] = useState('');
-  const [filtroTipo, setFiltroTipo] = useState('todos'); // 'todos', 'rental', 'sale'
+  const [filtroTipo, setFiltroTipo] = useState('todos');
   const [filtroEstado, setFiltroEstado] = useState('todos');
 
-  // Estados para Modales
   const [modalNuevoAbierto, setModalNuevoAbierto] = useState(false);
   const [modalFechasAbierto, setModalFechasAbierto] = useState(false);
   const [pedidoEditando, setPedidoEditando] = useState(null);
+
+  const [modalDetalleAbierto, setModalDetalleAbierto] = useState(false);
+  const [orderIdDetalle, setOrderIdDetalle] = useState(null);
 
   useEffect(() => {
     cargarPedidos();
@@ -40,16 +41,11 @@ export default function Agenda() {
     try {
       const ordersRes = await agendaService.getAllOrders();
       const orders = ordersRes.data?.orders || [];
-
       const clientesPorId = await resolverClientesDeOrdenes(orders);
-
-      // Adjuntamos el cliente completo a cada pedido para que la card tenga
-      // nombre, teléfono, etc. sin volver a golpear la API en el render.
       const pedidosConCliente = orders.map((o) => ({
         ...o,
         cliente: clientesPorId.get(o.customer_id) || null,
       }));
-
       setPedidos(pedidosConCliente);
     } catch (err) {
       console.error('Error al cargar pedidos', err);
@@ -59,14 +55,6 @@ export default function Agenda() {
     }
   };
 
-  /**
-   * Intenta resolver los clientes con GET /customers (1 sola llamada).
-   * Si ese endpoint falla (403 - MissingAuthenticationTokenException,
-   * indicando que la ruta de colección no está desplegada en API Gateway),
-   * cae a resolver solo los customer_id que aparecen en los pedidos vía
-   * GET /customers/{id}, que sí funciona. Evita romper toda la agenda por
-   * un endpoint que no está disponible.
-   */
   const resolverClientesDeOrdenes = async (orders) => {
     try {
       const customersRes = await customerService.getAllCustomers();
@@ -79,8 +67,6 @@ export default function Agenda() {
     }
 
     const idsUnicos = [...new Set(orders.map((o) => o.customer_id).filter(Boolean))];
-    // silent: true porque aquí un 404 es un caso esperado (customer_id
-    // huérfano de un pedido viejo/de prueba), no un error real de la app.
     const resultados = await Promise.allSettled(
       idsUnicos.map((id) => customerService.getCustomerById(id, { silent: true }))
     );
@@ -101,7 +87,7 @@ export default function Agenda() {
       await agendaService.updateOrderStatus(orderId, nuevoEstado);
     } catch (err) {
       alert('Error al actualizar el estado.');
-      setPedidos(anterior); // Rollback
+      setPedidos(anterior);
     }
   };
 
@@ -110,9 +96,11 @@ export default function Agenda() {
     setModalFechasAbierto(true);
   };
 
-  // ------------------------------------------
-  // Filtrado + búsqueda (ahora también por nombre/teléfono del cliente)
-  // ------------------------------------------
+  const abrirDetallePedido = (pedido) => {
+    setOrderIdDetalle(pedido.order_id);
+    setModalDetalleAbierto(true);
+  };
+
   const pedidosFiltrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return pedidos.filter((p) => {
@@ -154,10 +142,8 @@ export default function Agenda() {
         </div>
       </header>
 
-      {/* Dashboard: KPIs + distribución por estado, sobre lo que está filtrado */}
       {!cargando && <AgendaStats pedidos={pedidosFiltrados} />}
 
-      {/* Buscador + filtro de estado */}
       <div className="flex flex-col sm:flex-row gap-3 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -202,26 +188,33 @@ export default function Agenda() {
         <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-yellow-500" /></div>
       ) : (
         <div className="space-y-8">
-
-          {/* SECCIÓN ALQUILERES */}
           {alquileres.length > 0 && (
             <section>
               <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-4 border-b border-gray-100 pb-2">
                 <CalendarClock className="w-5 h-5 text-yellow-500" /> Alquileres Activos
                 <span className="text-xs font-normal text-gray-400">({alquileres.length})</span>
               </h2>
-              <AgendaTable pedidos={alquileres} onUpdateStatus={cambiarEstadoOrden} onEditDates={abrirModalEdicionFechas} />
+              <AgendaTable
+                pedidos={alquileres}
+                onUpdateStatus={cambiarEstadoOrden}
+                onEditDates={abrirModalEdicionFechas}
+                onViewDetail={abrirDetallePedido}
+              />
             </section>
           )}
 
-          {/* SECCIÓN VENTAS */}
           {ventas.length > 0 && (
             <section>
               <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-4 border-b border-gray-100 pb-2">
                 <ShoppingBag className="w-5 h-5 text-blue-500" /> Ventas Directas
                 <span className="text-xs font-normal text-gray-400">({ventas.length})</span>
               </h2>
-              <AgendaTable pedidos={ventas} onUpdateStatus={cambiarEstadoOrden} onEditDates={abrirModalEdicionFechas} />
+              <AgendaTable
+                pedidos={ventas}
+                onUpdateStatus={cambiarEstadoOrden}
+                onEditDates={abrirModalEdicionFechas}
+                onViewDetail={abrirDetallePedido}
+              />
             </section>
           )}
 
@@ -231,9 +224,9 @@ export default function Agenda() {
         </div>
       )}
 
-      {/* Modales */}
       <OrderModal isOpen={modalNuevoAbierto} onClose={() => setModalNuevoAbierto(false)} onOrderCreated={cargarPedidos} />
       <EditDatesModal isOpen={modalFechasAbierto} onClose={() => setModalFechasAbierto(false)} pedido={pedidoEditando} onDatesUpdated={cargarPedidos} />
+      <OrderDetailModal isOpen={modalDetalleAbierto} onClose={() => setModalDetalleAbierto(false)} orderId={orderIdDetalle} />
     </div>
   );
 }

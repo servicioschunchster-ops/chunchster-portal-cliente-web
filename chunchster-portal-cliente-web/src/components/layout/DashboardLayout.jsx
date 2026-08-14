@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Home, Package, Calendar, LogOut } from 'lucide-react';
+import { Home, Package, Calendar, Layers, LogOut } from 'lucide-react';
 import logoChunchster from '../../assets/logo.jpeg';
 
 export default function DashboardLayout() {
@@ -10,6 +10,7 @@ export default function DashboardLayout() {
     { path: '/lobby', label: 'Inicio', icon: Home },
     { path: '/inventario', label: 'Inventario', icon: Package },
     { path: '/agenda', label: 'Agenda', icon: Calendar },
+    { path: '/paquetes', label: 'Paquetes', icon: Layers }, // <-- Nueva ruta añadida aquí
   ];
 
   return (

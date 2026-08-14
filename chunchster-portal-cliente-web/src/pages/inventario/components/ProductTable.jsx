@@ -27,6 +27,14 @@ const claseStock = (qty) => {
 };
 
 export default function ProductTable({ productos, onEdit, onDelete, onToggleActive }) {
+  // Los paquetes (is_package: true) son productos según la API, pero tienen
+  // su propia vista (PackageTable/PackageModal). Se excluyen acá para que no
+  // aparezcan duplicados entre las dos tablas.
+  const productosSinCombos = useMemo(
+    () => productos.filter((p) => !p.is_package),
+    [productos]
+  );
+
   // ------------------------------------------
   // Búsqueda y filtros
   // ------------------------------------------
@@ -35,14 +43,14 @@ export default function ProductTable({ productos, onEdit, onDelete, onToggleActi
   const [orden, setOrden] = useState({ campo: null, direccion: 'asc' });
 
   const categorias = useMemo(() => {
-    const unicas = new Set(productos.map((p) => p.category_id).filter(Boolean));
+    const unicas = new Set(productosSinCombos.map((p) => p.category_id).filter(Boolean));
     return [...unicas];
-  }, [productos]);
+  }, [productosSinCombos]);
 
   const tipos = useMemo(() => {
-    const unicos = new Set(productos.map((p) => p.product_type).filter(Boolean));
+    const unicos = new Set(productosSinCombos.map((p) => p.product_type).filter(Boolean));
     return [...unicos];
-  }, [productos]);
+  }, [productosSinCombos]);
 
   const setFiltro = (clave, valor) => setFiltros((prev) => ({ ...prev, [clave]: valor }));
 
@@ -57,7 +65,7 @@ export default function ProductTable({ productos, onEdit, onDelete, onToggleActi
   const productosFiltrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
 
-    let resultado = productos.filter((p) => {
+    let resultado = productosSinCombos.filter((p) => {
       const pasaCategoria = filtros.categoria === 'todas' || p.category_id === filtros.categoria;
       const pasaTipo = filtros.tipo === 'todos' || p.product_type === filtros.tipo;
       const pasaEstado =
@@ -79,15 +87,17 @@ export default function ProductTable({ productos, onEdit, onDelete, onToggleActi
     }
 
     return resultado;
-  }, [productos, filtros, busqueda, orden]);
+  }, [productosSinCombos, filtros, busqueda, orden]);
 
-  // Chips de resumen (sobre el total, no sobre lo filtrado)
+  // Chips de resumen (sobre el total sin combos, no sobre lo filtrado)
   const resumen = useMemo(() => {
-    const activos = productos.filter((p) => p.is_active).length;
-    const inactivos = productos.length - activos;
-    const stockBajo = productos.filter((p) => p.is_active && (p.qty_available_total ?? 0) <= UMBRAL_STOCK_BAJO).length;
+    const activos = productosSinCombos.filter((p) => p.is_active).length;
+    const inactivos = productosSinCombos.length - activos;
+    const stockBajo = productosSinCombos.filter(
+      (p) => p.is_active && (p.qty_available_total ?? 0) <= UMBRAL_STOCK_BAJO
+    ).length;
     return { activos, inactivos, stockBajo };
-  }, [productos]);
+  }, [productosSinCombos]);
 
   // ------------------------------------------
   // Visor de imágenes
@@ -139,9 +149,8 @@ export default function ProductTable({ productos, onEdit, onDelete, onToggleActi
       <th className={`px-6 py-3 font-semibold ${className}`}>
         <button
           onClick={() => alternarOrden(campo)}
-          className={`flex items-center gap-1 cursor-pointer transition-colors ${
-            activo ? 'text-gray-900' : 'text-gray-600 hover:text-gray-800'
-          }`}
+          className={`flex items-center gap-1 cursor-pointer transition-colors ${activo ? 'text-gray-900' : 'text-gray-600 hover:text-gray-800'
+            }`}
         >
           {children}
           <Icono className={`w-3.5 h-3.5 ${activo ? 'text-gray-900' : 'text-gray-400'}`} />
@@ -201,7 +210,7 @@ export default function ProductTable({ productos, onEdit, onDelete, onToggleActi
 
         <div className="flex flex-wrap items-center gap-4 text-xs">
           <span className="text-gray-500">
-            Mostrando <span className="font-semibold text-gray-700">{productosFiltrados.length}</span> de {productos.length}
+            Mostrando <span className="font-semibold text-gray-700">{productosFiltrados.length}</span> de {productosSinCombos.length}
           </span>
           <button
             onClick={() => setFiltro('estado', 'activos')}
@@ -250,9 +259,8 @@ export default function ProductTable({ productos, onEdit, onDelete, onToggleActi
                   <div className="flex items-center gap-3">
                     <div
                       onClick={() => abrirVisor(prod)}
-                      className={`w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 overflow-hidden border border-gray-200 shrink-0 relative group ${
-                        tieneImagenes ? 'cursor-pointer' : ''
-                      }`}
+                      className={`w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 overflow-hidden border border-gray-200 shrink-0 relative group ${tieneImagenes ? 'cursor-pointer' : ''
+                        }`}
                       title={tieneImagenes ? `Ver ${prod.images.length} foto(s)` : 'Sin imagen'}
                     >
                       {imagenPrincipal ? (
@@ -308,9 +316,8 @@ export default function ProductTable({ productos, onEdit, onDelete, onToggleActi
 
                 <td className="px-6 py-4">
                   <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                      prod.is_active ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-500 border border-gray-200'
-                    }`}
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${prod.is_active ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-500 border border-gray-200'
+                      }`}
                   >
                     {prod.is_active ? <CircleDot className="w-3 h-3" /> : <CircleSlash className="w-3 h-3" />}
                     {prod.is_active ? 'Activo' : 'Inactivo'}
@@ -318,20 +325,10 @@ export default function ProductTable({ productos, onEdit, onDelete, onToggleActi
                 </td>
 
                 <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
-                  <button
-                    onClick={() => handleToggleActive(prod)}
-                    title={prod.is_active ? 'Desactivar producto' : 'Activar producto'}
-                    className={`p-1.5 rounded transition-colors cursor-pointer ${
-                      prod.is_active ? 'text-gray-500 hover:bg-gray-100' : 'text-green-600 hover:bg-green-50'
-                    }`}
-                  >
-                    {prod.is_active ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-                  </button>
                   <button onClick={() => onEdit(prod)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer">
                     <Edit2 className="w-4 h-4" />
                   </button>
-                  <button onClick={() => onDelete(prod.product_id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer">
-                    <Trash2 className="w-4 h-4" />
+                  <button onClick={() => onDelete(prod)} className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer">                    <Trash2 className="w-4 h-4" />
                   </button>
                 </td>
               </tr>
@@ -371,11 +368,10 @@ export default function ProductTable({ productos, onEdit, onDelete, onToggleActi
                     key={idx}
                     onMouseEnter={() => setVisor((prev) => ({ ...prev, indiceActual: idx }))}
                     onClick={() => setVisor((prev) => ({ ...prev, indiceActual: idx }))}
-                    className={`relative w-16 h-16 md:w-full md:aspect-square rounded-lg border-2 cursor-pointer transition-all overflow-hidden shrink-0 ${
-                      idx === visor.indiceActual
+                    className={`relative w-16 h-16 md:w-full md:aspect-square rounded-lg border-2 cursor-pointer transition-all overflow-hidden shrink-0 ${idx === visor.indiceActual
                         ? 'border-yellow-400 shadow-md ring-2 ring-yellow-400/20'
                         : 'border-gray-200 hover:border-yellow-300 opacity-70 hover:opacity-100'
-                    }`}
+                      }`}
                   >
                     <img src={img} className="w-full h-full object-cover bg-gray-50" alt={`Miniatura ${idx}`} />
                     <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[8px] text-center font-bold py-0.5 uppercase">
@@ -420,9 +416,8 @@ export default function ProductTable({ productos, onEdit, onDelete, onToggleActi
                     {traducirTipo(visor.producto.product_type)}
                   </span>
                   <span
-                    className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wider ${
-                      visor.producto.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'
-                    }`}
+                    className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wider ${visor.producto.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'
+                      }`}
                   >
                     {visor.producto.is_active ? <CircleDot className="w-2.5 h-2.5" /> : <CircleSlash className="w-2.5 h-2.5" />}
                     {visor.producto.is_active ? 'Activo' : 'Inactivo'}
@@ -470,11 +465,10 @@ export default function ProductTable({ productos, onEdit, onDelete, onToggleActi
                 <p className="text-xs text-gray-400 text-center mb-2 uppercase tracking-wide font-semibold">Acciones Administrativas</p>
                 <button
                   onClick={() => handleToggleActive(visor.producto)}
-                  className={`w-full font-bold py-3 px-4 rounded-xl shadow-sm transition-transform active:scale-95 flex justify-center items-center gap-2 cursor-pointer border ${
-                    visor.producto.is_active
+                  className={`w-full font-bold py-3 px-4 rounded-xl shadow-sm transition-transform active:scale-95 flex justify-center items-center gap-2 cursor-pointer border ${visor.producto.is_active
                       ? 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
                       : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
-                  }`}
+                    }`}
                 >
                   {visor.producto.is_active ? <PowerOff className="w-5 h-5" /> : <Power className="w-5 h-5" />}
                   {visor.producto.is_active ? 'Desactivar Producto' : 'Activar Producto'}
@@ -491,7 +485,7 @@ export default function ProductTable({ productos, onEdit, onDelete, onToggleActi
                 <button
                   onClick={() => {
                     cerrarVisor();
-                    onDelete(visor.producto.product_id);
+                    onDelete(visor.producto);
                   }}
                   className="w-full bg-white hover:bg-red-50 text-red-600 border border-red-200 font-bold py-3 px-4 rounded-xl transition-colors flex justify-center items-center gap-2 cursor-pointer"
                 >
@@ -504,4 +498,6 @@ export default function ProductTable({ productos, onEdit, onDelete, onToggleActi
       )}
     </div>
   );
+
+
 }

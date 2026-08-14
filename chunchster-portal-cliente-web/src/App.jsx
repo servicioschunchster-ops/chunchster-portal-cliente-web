@@ -5,6 +5,7 @@ import DashboardLayout from './components/layout/DashboardLayout';
 import Lobby from './pages/Lobby';
 import Inventario from './pages/inventario/Inventario';
 import Agenda from './pages/agenda/Agenda';
+import Paquetes from './pages/paquetes/Paquetes';
 
 function App() {
   return (
@@ -13,12 +14,11 @@ function App() {
         {/* Rutas Públicas (Sin menú lateral) */}
         <Route path="/login" element={<Login />} />
         {/* Rutas Privadas (Envueltas en el DashboardLayout) */}
-        {/* Rutas Privadas (Envueltas en el DashboardLayout) */}
-         {/* Rutas Privadas (Envueltas en el DashboardLayout) */}
         <Route element={<DashboardLayout />}>
           <Route path="/lobby" element={<Lobby />} />
           <Route path="/inventario" element={<Inventario />} />
           <Route path="/agenda" element={<Agenda />} />
+          <Route path="/paquetes" element={<Paquetes />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />

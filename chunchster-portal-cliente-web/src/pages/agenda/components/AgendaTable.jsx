@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Phone, MapPin, Store, StickyNote, CheckCircle, XCircle, Pencil } from 'lucide-react';
+import { Phone, MapPin, Store, StickyNote, CheckCircle, XCircle, Pencil, Eye } from 'lucide-react';
 import { traducirEstado, ESTADO_COLOR, traducirTipoOrden } from '../../../utils/Orderhelpers.js';
 
 const formatearFechaCorta = (fechaIso) => {
@@ -11,8 +11,6 @@ const formatearFechaCorta = (fechaIso) => {
   return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' });
 };
 
-// Popup pequeño que se abre con click (no hover). Se cierra al hacer click
-// afuera, con Escape, o si se vuelve a hacer click en el mismo trigger.
 function PopoverInfo({ abierto, onCerrar, children, align = 'left' }) {
   const ref = useRef(null);
 
@@ -47,7 +45,7 @@ function PopoverInfo({ abierto, onCerrar, children, align = 'left' }) {
   );
 }
 
-function FilaPedido({ pedido, onUpdateStatus, onEditDates }) {
+function FilaPedido({ pedido, onUpdateStatus, onEditDates, onViewDetail }) {
   const esAlquiler = pedido.order_type === 'rental';
   const esDelivery = pedido.delivery_type === 'delivery';
   const isCancelled = pedido.status === 'cancelled';
@@ -55,7 +53,6 @@ function FilaPedido({ pedido, onUpdateStatus, onEditDates }) {
   const isDelivered = pedido.status === 'delivered';
   const cliente = pedido.cliente;
 
-  // 'nota' | 'lugar' | null — solo un popup abierto por fila a la vez
   const [popupAbierto, setPopupAbierto] = useState(null);
   const togglePopup = useCallback(
     (nombre) => setPopupAbierto((actual) => (actual === nombre ? null : nombre)),
@@ -104,10 +101,10 @@ function FilaPedido({ pedido, onUpdateStatus, onEditDates }) {
     [onUpdateStatus, pedido.order_id]
   );
   const handleEditar = useCallback(() => onEditDates?.(pedido), [onEditDates, pedido]);
+  const handleVerDetalle = useCallback(() => onViewDetail?.(pedido), [onViewDetail, pedido]);
 
   return (
     <tr className={`border-b border-gray-100 last:border-0 hover:bg-gray-50/60 transition-colors ${isCancelled ? 'opacity-60' : ''}`}>
-      {/* Pedido + estado */}
       <td className="py-3 pl-4 pr-3 whitespace-nowrap">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded">
@@ -119,7 +116,6 @@ function FilaPedido({ pedido, onUpdateStatus, onEditDates }) {
         </div>
       </td>
 
-      {/* Cliente */}
       <td className="py-3 px-3 min-w-[160px]">
         <p className="font-semibold text-gray-900 text-sm truncate max-w-[180px]">
           {cliente?.name || 'Cliente sin datos'}
@@ -137,7 +133,6 @@ function FilaPedido({ pedido, onUpdateStatus, onEditDates }) {
         )}
       </td>
 
-      {/* Lugar — click abre popup con la dirección completa */}
       <td className="py-3 px-3 min-w-[150px] relative">
         {esDelivery ? (
           <button
@@ -160,7 +155,6 @@ function FilaPedido({ pedido, onUpdateStatus, onEditDates }) {
         </PopoverInfo>
       </td>
 
-      {/* Fechas */}
       <td className="py-3 px-3 whitespace-nowrap text-xs text-gray-700">
         {esAlquiler ? (
           <span>
@@ -178,12 +172,10 @@ function FilaPedido({ pedido, onUpdateStatus, onEditDates }) {
         )}
       </td>
 
-      {/* Total */}
       <td className="py-3 px-3 text-right font-bold text-gray-900 text-sm whitespace-nowrap">
         S/ {totalFormateado}
       </td>
 
-      {/* Notas — click abre popup con el texto completo */}
       <td className="py-3 px-3 text-center relative">
         {pedido.notes ? (
           <>
@@ -204,9 +196,15 @@ function FilaPedido({ pedido, onUpdateStatus, onEditDates }) {
         )}
       </td>
 
-      {/* Acciones */}
       <td className="py-3 pr-4 pl-3">
         <div className="flex items-center justify-end gap-1">
+          <button
+            onClick={handleVerDetalle}
+            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
+            title="Ver detalle del pedido"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
           {onEditDates && (
             <button
               onClick={handleEditar}
@@ -238,8 +236,8 @@ function FilaPedido({ pedido, onUpdateStatus, onEditDates }) {
   );
 }
 
-export default function AgendaTable({ pedidos, onUpdateStatus, onEditDates }) {
-  if (pedidos.length === 0) return null;
+export default function AgendaTable({ pedidos, onUpdateStatus, onEditDates, onViewDetail }) {
+  if (!pedidos || pedidos.length === 0) return null;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
@@ -262,6 +260,7 @@ export default function AgendaTable({ pedidos, onUpdateStatus, onEditDates }) {
               pedido={pedido}
               onUpdateStatus={onUpdateStatus}
               onEditDates={onEditDates}
+              onViewDetail={onViewDetail}
             />
           ))}
         </tbody>
