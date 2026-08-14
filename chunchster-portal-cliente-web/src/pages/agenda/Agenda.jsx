@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { agendaService } from '../../services/agendaService';
-import { customerService } from '../../services/customerService';
+import { agendaService } from '../../services/agendaService.js';
+import { customerService } from '../../services/customerService.js';
 import { Loader2, Plus, Search, CalendarClock, ShoppingBag, AlertCircle } from 'lucide-react';
-import OrderModal from './components/OrderModal';
-import AgendaCard from './components/AgendaCard';
-import EditDatesModal from './components/EditDatesModal';
+import OrderModal from './components/OrderModal.jsx';
+import AgendaCard from './components/AgendaCard.jsx';
+import EditDatesModal from './components/EditDatesModal.jsx';
 import { traducirEstado, ESTADOS_ORDEN } from '../../utils/Orderhelpers.js';
 
 // Normaliza la respuesta de GET /customers sin importar qué forma exacta
@@ -37,19 +37,30 @@ export default function Agenda() {
     setCargando(true);
     setError(null);
     try {
-      // Pedimos pedidos y clientes en paralelo (1 sola llamada de clientes
-      // para toda la lista, en vez de una por cada pedido).
-      const [ordersRes, customersRes] = await Promise.all([
+      // allSettled: si /customers falla (403, CORS, etc.) igual queremos
+      // mostrar los pedidos — solo se pierde el nombre/teléfono del cliente
+      // y la card cae de vuelta a mostrar el customer_id.
+      const [ordersResult, customersResult] = await Promise.allSettled([
         agendaService.getAllOrders(),
         customerService.getAllCustomers(),
       ]);
 
-      const orders = ordersRes.data?.orders || [];
-      const clientes = extraerListaClientes(customersRes);
-      const clientesPorId = new Map(clientes.map((c) => [c.customer_id, c]));
+      if (ordersResult.status === 'rejected') {
+        throw ordersResult.reason;
+      }
+      const orders = ordersResult.value.data?.orders || [];
+
+      let clientesPorId = new Map();
+      if (customersResult.status === 'fulfilled') {
+        const clientes = extraerListaClientes(customersResult.value);
+        clientesPorId = new Map(clientes.map((c) => [c.customer_id, c]));
+      } else {
+        console.error('No se pudieron cargar los clientes (se muestran pedidos sin nombre/teléfono):', customersResult.reason);
+      }
 
       // Adjuntamos el cliente completo a cada pedido para que la card tenga
-      // nombre, teléfono, etc. sin volver a golpear la API.
+      // nombre, teléfono, etc. sin volver a golpear la API. Si no hubo
+      // clientes disponibles, queda null y la card usa el fallback.
       const pedidosConCliente = orders.map((o) => ({
         ...o,
         cliente: clientesPorId.get(o.customer_id) || null,
