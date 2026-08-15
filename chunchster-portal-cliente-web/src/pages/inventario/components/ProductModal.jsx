@@ -35,7 +35,7 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
   const [formValues, setFormValues] = useState({
     name: '', description: '', sku: '', category_id: CATEGORIAS[0], product_type: 'rental',
     base_price: '', rental_price_day: '', rental_deposit: '',
-    tags: '', initial_stock: ''
+    tags: '', initial_stock: '', stock_actual: ''
   });
 
   const [atributos, setAtributos] = useState([nuevaFilaAtributo()]);
@@ -67,7 +67,8 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
           rental_price_day: productoEditando.rental_price_day || '',
           rental_deposit: productoEditando.rental_deposit || '',
           tags: (productoEditando.tags || []).join(', '),
-          initial_stock: '' 
+          initial_stock: '',
+          stock_actual: productoEditando.qty_available_total ?? ''
         });
         setAtributos(attributesAFilas(productoEditando.attributes));
 
@@ -87,7 +88,7 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
         setFormValues({
           name: '', description: '', sku: '', category_id: CATEGORIAS[0], product_type: 'rental',
           base_price: '', rental_price_day: '', rental_deposit: '',
-          tags: '', initial_stock: ''
+          tags: '', initial_stock: '', stock_actual: ''
         });
         setAtributos([nuevaFilaAtributo()]);
         setGaleria({
@@ -235,6 +236,13 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
 
     if (!productoEditando && formValues.initial_stock !== '') {
       productoData.initial_stock = parseInt(formValues.initial_stock, 10);
+    }
+
+    // Ajuste de stock al editar un producto existente
+    // ⚠️ Este es el campo de LECTURA (qty_available_total). Verifica si tu endpoint
+    // de actualización espera este mismo nombre o uno distinto (ej. adjust_qty, stock, etc.)
+    if (productoEditando && formValues.stock_actual !== '') {
+      productoData.qty_available_total = parseInt(formValues.stock_actual, 10);
     }
 
     try {
@@ -436,7 +444,7 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
               <p className="text-xs text-gray-400 mt-1">Sepáralas con comas. Se usan para la búsqueda multi-tag del catálogo.</p>
             </div>
 
-            {!productoEditando && (
+            {!productoEditando ? (
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Stock inicial</label>
                 <input
@@ -450,6 +458,20 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
                   className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 shadow-sm font-mono"
                 />
                 <p className="text-xs text-gray-400 mt-1">Cantidad disponible en la variante por defecto al crear el producto.</p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Stock actual</label>
+                <input
+                  type="number"
+                  name="stock_actual"
+                  min="0"
+                  step="1"
+                  value={formValues.stock_actual}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 shadow-sm font-mono"
+                />
+                <p className="text-xs text-gray-400 mt-1">Cambia este valor para ajustar el stock disponible.</p>
               </div>
             )}
           </div>

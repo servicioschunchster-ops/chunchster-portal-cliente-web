@@ -51,6 +51,7 @@ export default function PackageModal({ isOpen, onClose, paqueteEditando, onSaveS
         base_price: paqueteEditando.base_price ?? '',
         rental_price_day: paqueteEditando.rental_price_day ?? '',
         rental_deposit: paqueteEditando.rental_deposit ?? '',
+        qty_available_total: paqueteEditando.qty_available_total ?? '',
       });
       const comps = paqueteEditando.components || paqueteEditando.inventory || [];
       setComponentes(
@@ -322,6 +323,21 @@ export default function PackageModal({ isOpen, onClose, paqueteEditando, onSaveS
           {error && (
             <div className="flex items-start gap-2 bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-200">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /> {error}
+            </div>
+          )}
+
+          {esEdicion && (
+            <div className="flex items-center justify-between bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold text-indigo-900">Stock disponible del paquete</p>
+                <p className="text-xs text-indigo-600 mt-0.5">
+                  Se calcula automáticamente según el stock libre de cada componente. Para cambiarlo,
+                  ajusta el stock de los productos que forman el paquete (ej. "{componentes[0] ? nombreDeComponente(componentes[0]) || 'el componente' : 'el componente'}").
+                </p>
+              </div>
+              <span className="text-2xl font-bold text-indigo-900 font-mono shrink-0 ml-4">
+                {paqueteEditando?.qty_available_total ?? '—'}
+              </span>
             </div>
           )}
 
