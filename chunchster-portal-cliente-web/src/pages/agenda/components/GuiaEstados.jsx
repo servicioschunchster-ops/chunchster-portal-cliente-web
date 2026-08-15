@@ -1,6 +1,6 @@
 import { X, HelpCircle, ArrowRight } from 'lucide-react';
 import { traducirEstado, ESTADO_COLOR } from '../../../utils/Orderhelpers.js';
-import { siguientesEstadosValidos } from '../../../utils/orderStatusFlow.js';
+import { siguientesEstadosValidos } from '../../../utils/Orderstatusflow.js';
 
 // Descripción de cada estado, en lenguaje simple para quien use el panel.
 // Si algún texto no calza con la realidad del negocio, se ajusta solo aquí.

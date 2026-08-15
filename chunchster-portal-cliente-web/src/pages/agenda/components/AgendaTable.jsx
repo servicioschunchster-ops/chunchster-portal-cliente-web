@@ -93,7 +93,7 @@ function FilaPedido({ pedido, onUpdateStatus, onEditDates, onViewDetail }) {
   const statusClasses = ESTADO_COLOR[pedido.status] || 'bg-gray-100 text-gray-600 border-gray-200';
 
   // Estados a los que este pedido puede transicionar ahora mismo, según su
-  // estado actual y si es alquiler o venta (ver utils/orderStatusFlow.js).
+  // estado actual y si es alquiler o venta (ver utils/Orderstatusflow.js).
   const estadosDisponibles = useMemo(
     () => siguientesEstadosValidos(pedido.status, pedido.order_type),
     [pedido.status, pedido.order_type]
