@@ -371,6 +371,15 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
                 className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 shadow-sm"
                 required
               >
+                {/* Si la categoría guardada en BD no está en la lista fija de CATEGORIAS,
+                    la mostramos igual como opción extra para no ocultar el dato real
+                    (antes esto hacía que el <select> mostrara "Vestidos" por default
+                    aunque el valor guardado fuera otro) */}
+                {formValues.category_id && !CATEGORIAS.includes(formValues.category_id) && (
+                  <option value={formValues.category_id}>
+                    {formValues.category_id} (no está en el catálogo)
+                  </option>
+                )}
                 {CATEGORIAS.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}

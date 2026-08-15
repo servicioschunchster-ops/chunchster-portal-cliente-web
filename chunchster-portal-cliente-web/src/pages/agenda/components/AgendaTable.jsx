@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Phone, MapPin, Store, StickyNote, CheckCircle, XCircle, Pencil, Eye } from 'lucide-react';
+import { Phone, MapPin, Store, StickyNote, Pencil, Eye, RefreshCw } from 'lucide-react';
 import { traducirEstado, ESTADO_COLOR, traducirTipoOrden } from '../../../utils/Orderhelpers.js';
+import { siguientesEstadosValidos, posicionEnFlujo } from '../../../utils/Orderstatusflow.js';
 
 const formatearFechaCorta = (fechaIso) => {
   if (!fechaIso) return null;
@@ -49,7 +50,6 @@ function FilaPedido({ pedido, onUpdateStatus, onEditDates, onViewDetail }) {
   const esAlquiler = pedido.order_type === 'rental';
   const esDelivery = pedido.delivery_type === 'delivery';
   const isCancelled = pedido.status === 'cancelled';
-  const isConfirmed = pedido.status === 'confirmed';
   const isDelivered = pedido.status === 'delivered';
   const cliente = pedido.cliente;
 
@@ -92,14 +92,28 @@ function FilaPedido({ pedido, onUpdateStatus, onEditDates, onViewDetail }) {
 
   const statusClasses = ESTADO_COLOR[pedido.status] || 'bg-gray-100 text-gray-600 border-gray-200';
 
-  const handleConfirmar = useCallback(
-    () => onUpdateStatus(pedido.order_id, 'confirmed'),
+  // Estados a los que este pedido puede transicionar ahora mismo, según su
+  // estado actual y si es alquiler o venta (ver utils/orderStatusFlow.js).
+  const estadosDisponibles = useMemo(
+    () => siguientesEstadosValidos(pedido.status, pedido.order_type),
+    [pedido.status, pedido.order_type]
+  );
+
+  // Posición dentro del flujo lineal (ej. "Paso 3 de 6"). null para cancelled.
+  const progreso = useMemo(
+    () => posicionEnFlujo(pedido.status, pedido.order_type),
+    [pedido.status, pedido.order_type]
+  );
+
+  const handleCambiarEstado = useCallback(
+    (e) => {
+      const nuevoEstado = e.target.value;
+      if (nuevoEstado) onUpdateStatus(pedido.order_id, nuevoEstado);
+      e.target.value = '';
+    },
     [onUpdateStatus, pedido.order_id]
   );
-  const handleCancelar = useCallback(
-    () => onUpdateStatus(pedido.order_id, 'cancelled'),
-    [onUpdateStatus, pedido.order_id]
-  );
+
   const handleEditar = useCallback(() => onEditDates?.(pedido), [onEditDates, pedido]);
   const handleVerDetalle = useCallback(() => onViewDetail?.(pedido), [onViewDetail, pedido]);
 
@@ -113,6 +127,11 @@ function FilaPedido({ pedido, onUpdateStatus, onEditDates, onViewDetail }) {
           <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${statusClasses}`}>
             {traducirEstado(pedido.status)}
           </span>
+          {progreso && (
+            <span className="text-[10px] text-gray-400 whitespace-nowrap">
+              Paso {progreso.paso}/{progreso.total}
+            </span>
+          )}
         </div>
       </td>
 
@@ -121,7 +140,7 @@ function FilaPedido({ pedido, onUpdateStatus, onEditDates, onViewDetail }) {
           {cliente?.name || 'Cliente sin datos'}
         </p>
         {cliente?.phone_e164 ? (
-          <a
+          <a /* AQUÍ ESTABA EL ERROR: FALTABA ABRIR ESTA ETIQUETA <a> */
             href={`tel:${cliente.phone_e164}`}
             onClick={(e) => e.stopPropagation()}
             className="flex items-center gap-1 text-xs text-gray-500 hover:text-yellow-600 transition-colors"
@@ -197,7 +216,7 @@ function FilaPedido({ pedido, onUpdateStatus, onEditDates, onViewDetail }) {
       </td>
 
       <td className="py-3 pr-4 pl-3">
-        <div className="flex items-center justify-end gap-1">
+        <div className="flex items-center justify-end gap-1.5">
           <button
             onClick={handleVerDetalle}
             className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
@@ -214,22 +233,27 @@ function FilaPedido({ pedido, onUpdateStatus, onEditDates, onViewDetail }) {
               <Pencil className="w-4 h-4" />
             </button>
           )}
-          <button
-            onClick={handleConfirmar}
-            disabled={isConfirmed || isCancelled}
-            className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors disabled:opacity-30 cursor-pointer"
-            title="Confirmar pedido"
-          >
-            <CheckCircle className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleCancelar}
-            disabled={isCancelled}
-            className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-30 cursor-pointer"
-            title="Cancelar pedido"
-          >
-            <XCircle className="w-4 h-4" />
-          </button>
+
+          {estadosDisponibles.length > 0 ? (
+            <div className="relative">
+              <select
+                value=""
+                onChange={handleCambiarEstado}
+                title="Cambiar estado del pedido"
+                className="appearance-none pl-2 pr-6 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg outline-none cursor-pointer hover:border-gray-300 focus:ring-2 focus:ring-yellow-400/40 transition-colors"
+              >
+                <option value="">Cambiar estado…</option>
+                {estadosDisponibles.map((estado) => (
+                  <option key={estado} value={estado}>
+                    {traducirEstado(estado)}
+                  </option>
+                ))}
+              </select>
+              <RefreshCw className="w-3 h-3 text-gray-400 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+          ) : (
+            <span className="text-[11px] text-gray-300 italic px-1.5 whitespace-nowrap">Sin acciones</span>
+          )}
         </div>
       </td>
     </tr>

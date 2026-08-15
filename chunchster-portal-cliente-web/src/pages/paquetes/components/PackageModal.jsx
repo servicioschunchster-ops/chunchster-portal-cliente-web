@@ -1,22 +1,18 @@
 import { useState, useEffect } from 'react';
 import { X, Loader2, AlertCircle, Package } from 'lucide-react';
 import { catalogService, inventoryService } from '../../../services/invService';
-import {
-  estadoInicial,
-  nuevaFilaAtributo,
-  attributesAFilas,
-  filasAAttributes,
-  generarSKU,
-} from '../../../utils/packageModalHelpers';
+import { estadoInicial, generarSKU } from '../../../utils/packageModalHelpers';
 import PackageBasicInfoForm from './PackageBasicInfoForm';
-import PackageAttributesEditor from './PackageAttributesEditor';
 import PackageComponentsSection from './PackageComponentsSection';
+
+// Categoría fija para paquetes. Se manda al backend igual que antes,
+// pero ya no se le pide al usuario que la elija en el formulario.
+const CATEGORIA_PAQUETES = 'Paquetes';
 
 export default function PackageModal({ isOpen, onClose, paqueteEditando, onSaveSuccess }) {
   const esEdicion = Boolean(paqueteEditando);
 
   const [form, setForm] = useState(estadoInicial);
-  const [atributos, setAtributos] = useState([nuevaFilaAtributo()]);
   const [componentes, setComponentes] = useState([]);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
@@ -30,14 +26,9 @@ export default function PackageModal({ isOpen, onClose, paqueteEditando, onSaveS
   const [varianteElegida, setVarianteElegida] = useState('');
   const [cantidadElegida, setCantidadElegida] = useState(1);
 
-  // Categorías reales tomadas del catálogo (GET /catalog), no una lista fija.
-  const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
-  const [cargandoCategorias, setCargandoCategorias] = useState(false);
-  const [categoriaNuevaModo, setCategoriaNuevaModo] = useState(false);
-
   // Catálogo de productos (activos, no-paquete) precargado una vez al abrir el
-  // modal. El selector de componentes se llena con esta lista completa
-  // (sin buscador, elección directa).
+  // modal. El selector de componentes es un buscador (autocompletar) sobre
+  // esta lista, en vez de un <select> con cientos de <option>.
   const [productosCatalogo, setProductosCatalogo] = useState([]);
   const [cargandoCatalogoProductos, setCargandoCatalogoProductos] = useState(false);
 
@@ -54,15 +45,13 @@ export default function PackageModal({ isOpen, onClose, paqueteEditando, onSaveS
       setForm({
         name: paqueteEditando.name || '',
         description: paqueteEditando.description || '',
-        category_id: paqueteEditando.category_id || '',
+        category_id: paqueteEditando.category_id || CATEGORIA_PAQUETES,
         sku: paqueteEditando.sku || '',
         product_type: paqueteEditando.product_type || 'sale',
         base_price: paqueteEditando.base_price ?? '',
         rental_price_day: paqueteEditando.rental_price_day ?? '',
         rental_deposit: paqueteEditando.rental_deposit ?? '',
-        tags: (paqueteEditando.tags || []).join(', '),
       });
-      setAtributos(attributesAFilas(paqueteEditando.attributes));
       const comps = paqueteEditando.components || paqueteEditando.inventory || [];
       setComponentes(
         comps.map((c) => ({
@@ -78,8 +67,7 @@ export default function PackageModal({ isOpen, onClose, paqueteEditando, onSaveS
       // En edición no auto-generamos SKU: ya tiene uno.
       setSkuEditadoManualmente(true);
     } else {
-      setForm(estadoInicial);
-      setAtributos([nuevaFilaAtributo()]);
+      setForm({ ...estadoInicial, category_id: CATEGORIA_PAQUETES });
       setComponentes([]);
       setSkuEditadoManualmente(false);
     }
@@ -88,46 +76,11 @@ export default function PackageModal({ isOpen, onClose, paqueteEditando, onSaveS
     setVariantesDisponibles([]);
     setVarianteElegida('');
     setCantidadElegida(1);
-    setCategoriaNuevaModo(false);
     setNombresResueltos({});
   }, [isOpen, esEdicion, paqueteEditando]);
 
-  // Trae las categorías reales que ya existen en el catálogo (productos + paquetes)
-  // para poblar el <select> de Categoría, en vez de dejarlo como texto libre.
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const cargarCategorias = async () => {
-      setCargandoCategorias(true);
-      try {
-        const res = await catalogService.getCatalog({ limit: 100 });
-        const productos = res?.data?.products || [];
-        const unicas = Array.from(
-          new Set(productos.map((p) => p.category_id).filter((c) => c && c.trim().length > 0))
-        ).sort((a, b) => a.localeCompare(b));
-        setCategoriasDisponibles(unicas);
-
-        // Si estamos editando y la categoría del paquete no está en la lista
-        // (por paginación u otro motivo), la agregamos igual para no perderla.
-        if (esEdicion && paqueteEditando?.category_id && !unicas.includes(paqueteEditando.category_id)) {
-          setCategoriasDisponibles((prev) =>
-            [...prev, paqueteEditando.category_id].sort((a, b) => a.localeCompare(b))
-          );
-        }
-      } catch (err) {
-        console.error('Error cargando categorías', err);
-        setCategoriasDisponibles([]);
-      } finally {
-        setCargandoCategorias(false);
-      }
-    };
-
-    cargarCategorias();
-  }, [isOpen, esEdicion, paqueteEditando]);
-
   // Precarga el catálogo de productos activos (no-paquete) una sola vez al
-  // abrir el modal, para que "Componentes del paquete" sea un selector directo
-  // (sin buscador) con todos los productos disponibles.
+  // abrir el modal, para que "Componentes del paquete" tenga sobre qué buscar.
   useEffect(() => {
     if (!isOpen) return;
 
@@ -194,19 +147,16 @@ export default function PackageModal({ isOpen, onClose, paqueteEditando, onSaveS
     };
   }, [isOpen, componentes, productosCatalogo, nombresResueltos]);
 
-  // Auto-generar el SKU cuando ya hay nombre + categoría, mientras el usuario
-  // no lo haya editado a mano y estemos creando un paquete nuevo.
+  // Auto-generar el SKU cuando ya hay nombre, mientras el usuario no lo haya
+  // editado a mano y estemos creando un paquete nuevo.
   useEffect(() => {
     if (!isOpen || esEdicion || skuEditadoManualmente) return;
 
-    const nombreListo = form.name.trim().length > 0;
-    const categoriaLista = form.category_id.trim().length > 0;
-
-    if (nombreListo && categoriaLista) {
-      const nuevoSku = generarSKU(form.name, form.category_id);
+    if (form.name.trim().length > 0) {
+      const nuevoSku = generarSKU(form.name, CATEGORIA_PAQUETES);
       setForm((prev) => ({ ...prev, sku: nuevoSku }));
     }
-  }, [form.name, form.category_id, isOpen, esEdicion, skuEditadoManualmente]);
+  }, [form.name, isOpen, esEdicion, skuEditadoManualmente]);
 
   const handleChange = (campo, valor) => setForm((prev) => ({ ...prev, [campo]: valor }));
 
@@ -216,21 +166,9 @@ export default function PackageModal({ isOpen, onClose, paqueteEditando, onSaveS
   };
 
   const regenerarSku = () => {
-    if (!form.name.trim() || !form.category_id.trim()) return;
+    if (!form.name.trim()) return;
     setSkuEditadoManualmente(false);
-    handleChange('sku', generarSKU(form.name, form.category_id));
-  };
-
-  const handleAtributoChange = (id, campo, valor) => {
-    setAtributos((prev) => prev.map((fila) => (fila.id === id ? { ...fila, [campo]: valor } : fila)));
-  };
-
-  const agregarAtributo = () => {
-    setAtributos((prev) => [...prev, nuevaFilaAtributo()]);
-  };
-
-  const eliminarAtributo = (id) => {
-    setAtributos((prev) => (prev.length > 1 ? prev.filter((fila) => fila.id !== id) : prev));
+    handleChange('sku', generarSKU(form.name, CATEGORIA_PAQUETES));
   };
 
   // Nombre a mostrar para un componente: el que trajo al agregarlo, o el del
@@ -299,7 +237,6 @@ export default function PackageModal({ isOpen, onClose, paqueteEditando, onSaveS
 
   const validar = () => {
     if (!form.name.trim()) return 'El nombre es obligatorio.';
-    if (!form.category_id.trim()) return 'La categoría es obligatoria.';
     if (!form.sku.trim()) return 'El SKU es obligatorio.';
     if (componentes.length === 0) return 'Agrega al menos un componente al paquete.';
 
@@ -323,13 +260,6 @@ export default function PackageModal({ isOpen, onClose, paqueteEditando, onSaveS
     setGuardando(true);
     setError(null);
 
-    const tagsArray = form.tags
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean);
-
-    const attributes = filasAAttributes(atributos);
-
     const payload = {
       name: form.name,
       description: form.description || undefined,
@@ -337,8 +267,6 @@ export default function PackageModal({ isOpen, onClose, paqueteEditando, onSaveS
       sku: form.sku,
       product_type: form.product_type,
       is_package: true,
-      tags: tagsArray.length ? tagsArray : undefined,
-      attributes: Object.keys(attributes).length ? attributes : undefined,
       components: componentes.map((c) => ({
         product_id: c.product_id,
         variant_key: c.variant_key,
@@ -374,7 +302,7 @@ export default function PackageModal({ isOpen, onClose, paqueteEditando, onSaveS
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <Package className="w-5 h-5 text-indigo-600" />
@@ -390,7 +318,7 @@ export default function PackageModal({ isOpen, onClose, paqueteEditando, onSaveS
           </button>
         </div>
 
-        <div className="p-5 overflow-y-auto space-y-5">
+        <div className="p-6 overflow-y-auto space-y-6">
           {error && (
             <div className="flex items-start gap-2 bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-200">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /> {error}
@@ -401,19 +329,8 @@ export default function PackageModal({ isOpen, onClose, paqueteEditando, onSaveS
             form={form}
             onChange={handleChange}
             esEdicion={esEdicion}
-            categoriasDisponibles={categoriasDisponibles}
-            cargandoCategorias={cargandoCategorias}
-            categoriaNuevaModo={categoriaNuevaModo}
-            setCategoriaNuevaModo={setCategoriaNuevaModo}
             onSkuChange={handleSkuChange}
             onRegenerarSku={regenerarSku}
-          />
-
-          <PackageAttributesEditor
-            atributos={atributos}
-            onAtributoChange={handleAtributoChange}
-            onAgregar={agregarAtributo}
-            onEliminar={eliminarAtributo}
           />
 
           <PackageComponentsSection
