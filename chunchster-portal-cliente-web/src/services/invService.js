@@ -107,13 +107,14 @@ export class InventoryService {
   }
 
   /**
-   * PUT /inventory/{variant_key}?product_id=...
-   * Body: { qty_available, restock_alert?, reason? }
+   * PUT /inventory/{product_id}
+   * El product_id va en la URL. El variant_key va DENTRO del body (requerido por la API).
+   * Body: { variant_key, qty_available, restock_alert?, reason? }
    */
   async updateInventoryVariant(variantKey, productId, data) {
-    return await this.apiClient(`${this.basePath}/${variantKey}?product_id=${productId}`, {
+    return await this.apiClient(`${this.basePath}/${productId}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ variant_key: variantKey, ...data }),
     });
   }
 }
