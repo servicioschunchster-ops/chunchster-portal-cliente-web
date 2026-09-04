@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Wand2, Loader2, Image as ImageIcon, Trash2, UploadCloud } from 'lucide-react';
-import { catalogService } from '../../../services/invService';
+import { catalogService, inventoryService } from '../../../services/invService';
 
 const ORIENTACIONES = [
   { id: 'FRONT', label: 'Frente' },
@@ -238,18 +238,28 @@ export default function ProductModal({ isOpen, onClose, productoEditando, onSave
       productoData.initial_stock = parseInt(formValues.initial_stock, 10);
     }
 
-    // Ajuste de stock al editar un producto existente
-    // ⚠️ Este es el campo de LECTURA (qty_available_total). Verifica si tu endpoint
-    // de actualización espera este mismo nombre o uno distinto (ej. adjust_qty, stock, etc.)
-    if (productoEditando && formValues.stock_actual !== '') {
-      productoData.qty_available_total = parseInt(formValues.stock_actual, 10);
-    }
-
     try {
       let productId = productoEditando?.product_id;
 
       if (productoEditando) {
         await catalogService.updateProduct(productId, productoData);
+
+        // El stock NO se actualiza vía /catalog (qty_available_total es de solo lectura ahí).
+        // Vive en /inventory, por variante. Actualizamos la variante correspondiente aparte.
+        if (formValues.stock_actual !== '' && Number(formValues.stock_actual) !== Number(productoEditando.qty_available_total)) {
+          const detalle = await catalogService.getProductDetails(productId);
+          const variantes = detalle.data.inventory || [];
+          // Si el producto maneja una sola variante (caso más común), la tomamos directo.
+          // Si tiene varias, ajustamos la primera (DEFAULT) — habría que decidir cuál si hay más de una.
+          const variante = variantes.find(v => v.variant_key === 'DEFAULT') || variantes[0];
+
+          if (variante) {
+            await inventoryService.updateInventoryVariant(variante.variant_key, productId, {
+              qty_available: parseInt(formValues.stock_actual, 10),
+              reason: 'Ajuste manual desde edición de producto'
+            });
+          }
+        }
       } else {
         const response = await catalogService.createProduct(productoData);
         productId = response.data.product_id;
